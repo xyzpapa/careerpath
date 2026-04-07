@@ -628,7 +628,7 @@ const BADGES_DEF = [
 
 // ─── SUPABASE ────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://proydwxsyvlvzyujzgbo.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_CbRALM-P47WGnIiEFNqqWA_NOc7EkDT'; // ← вставь сюда свой sb_publishable_... ключ
+const SUPABASE_KEY = 'YOUR_PUBLISHABLE_KEY'; // ← вставь сюда свой sb_publishable_... ключ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 let saveTimer = null;
@@ -669,7 +669,8 @@ async function doRegister(){
 }
 
 async function doGoogleAuth(){
-  await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo: window.location.origin}});
+  const redirectTo = window.location.origin + window.location.pathname;
+  await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo}});
 }
 
 async function doLogout(){
