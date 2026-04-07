@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareerPath AI — MVP</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080808;--s1:#0f0f0f;--s2:#151515;--s3:#1a1a1a;
+  --b1:#1e1e1e;--b2:#2a2a2a;--b3:#383838;
+  --green:#a8ff3e;--blue:#4d9fff;--red:#ff4d6d;--purple:#b47eff;--orange:#ff9f3e;
+  --text:#f0f0f0;--mid:#777;--muted:#333;
+  --font:'Inter',sans-serif;--display:'Unbounded',sans-serif;
+  --r:0px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+
+/* LAYOUT */
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;min-width:240px;background:var(--s1);border-right:1px solid var(--b1);position:fixed;top:0;left:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;z-index:200}
+.main{margin-left:240px;flex:1;display:flex;flex-direction:column}
+.topbar{background:var(--s1);border-bottom:1px solid var(--b1);padding:0 28px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+
+/* SIDEBAR */
+.sb-brand{padding:20px 18px 14px;border-bottom:1px solid var(--b1)}
+.sb-logo{font-family:var(--display);font-size:12px;font-weight:900;color:var(--green);letter-spacing:1px}
+.sb-tagline{font-size:10px;color:var(--mid);margin-top:3px}
+.sb-xp{padding:14px 18px;border-bottom:1px solid var(--b1)}
+.xp-label{display:flex;justify-content:space-between;font-size:10px;color:var(--mid);margin-bottom:6px}
+.xp-bar{background:var(--b1);height:4px}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--blue));transition:width .5s ease}
+.xp-level{font-family:var(--display);font-size:10px;font-weight:700;color:var(--green);margin-top:5px}
+.sb-nav{padding:10px 0;flex:1}
+.sb-section{padding:6px 18px 3px;font-size:9px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 18px;font-size:12px;color:var(--mid);cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+.sb-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.sb-item.active{color:var(--green);border-left-color:var(--green);background:rgba(168,255,62,.04)}
+.sb-item .si-icon{font-size:14px;width:18px;text-align:center}
+.sb-item .si-badge{margin-left:auto;background:var(--green);color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px}
+.sb-badges{padding:14px 18px;border-top:1px solid var(--b1)}
+.badges-label{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.badges-grid{display:flex;flex-wrap:wrap;gap:6px}
+.badge{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid var(--b1);title-attr:attr(title)}
+.badge.earned{border-color:var(--green)}
+.badge.locked{opacity:.25;filter:grayscale(1)}
+
+/* TOPBAR */
+.tb-title{font-family:var(--display);font-size:12px;font-weight:700;color:var(--text)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tb-streak{font-size:11px;color:var(--orange);display:flex;align-items:center;gap:5px}
+.tb-points{font-size:11px;color:var(--green);font-weight:600;background:rgba(168,255,62,.1);padding:4px 10px}
+
+/* VIEWS */
+.view{display:none;padding:28px;flex:1}
+.view.active{display:block}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--b1);padding:24px;margin-bottom:16px}
+.card-title{font-family:var(--display);font-size:13px;font-weight:700;margin-bottom:8px}
+.card-sub{font-size:12px;color:var(--mid);line-height:1.7}
+
+/* AI ANALYZER */
+.analyzer-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.input-block{background:var(--s1);border:1px solid var(--b1);padding:0;overflow:hidden}
+.input-label{padding:12px 16px;border-bottom:1px solid var(--b1);font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mid);display:flex;align-items:center;gap:8px}
+.input-label span{font-size:13px}
+textarea{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--font);font-size:12px;line-height:1.7;padding:16px;resize:none;outline:none;min-height:180px}
+textarea::placeholder{color:var(--muted)}
+.analyze-btn{width:100%;background:var(--green);color:#000;font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;padding:16px;border:none;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.analyze-btn:hover{background:#bfff50}
+.analyze-btn:disabled{background:var(--b2);color:var(--mid);cursor:not-allowed}
+
+/* RESULTS */
+.results-container{display:none}
+.results-container.show{display:block}
+.skill-gap-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.gap-card{background:var(--s2);border:1px solid var(--b1);padding:16px;position:relative;overflow:hidden}
+.gap-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.gap-card.critical::before{background:var(--red)}
+.gap-card.important::before{background:var(--orange)}
+.gap-card.nice::before{background:var(--blue)}
+.gap-priority{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.gap-card.critical .gap-priority{color:var(--red)}
+.gap-card.important .gap-priority{color:var(--orange)}
+.gap-card.nice .gap-priority{color:var(--blue)}
+.gap-skill{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px}
+.gap-desc{font-size:11px;color:var(--mid);line-height:1.5;margin-bottom:10px}
+.gap-bar-wrap{background:var(--b1);height:3px;margin-bottom:3px}
+.gap-bar{height:100%;background:var(--green);transition:width 1s ease}
+.gap-bar-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+.add-to-plan{background:transparent;border:1px solid var(--b2);color:var(--mid);font-size:10px;padding:5px 10px;cursor:pointer;width:100%;margin-top:8px;font-family:var(--font);transition:all .15s}
+.add-to-plan:hover{border-color:var(--green);color:var(--green)}
+.add-to-plan.added{border-color:var(--green);color:var(--green);background:rgba(168,255,62,.06)}
+
+/* PLAN */
+.plan-item{background:var(--s2);border:1px solid var(--b1);padding:0;margin-bottom:10px;overflow:hidden}
+.plan-header{display:flex;align-items:center;gap:14px;padding:16px;cursor:pointer;transition:background .15s}
+.plan-header:hover{background:var(--s3)}
+.plan-check{width:20px;height:20px;min-width:20px;border:1.5px solid var(--b2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.plan-item.done .plan-check{background:var(--green);border-color:var(--green)}
+.plan-check-icon{display:none;font-size:11px;color:#000;font-weight:700}
+.plan-item.done .plan-check-icon{display:block}
+.plan-info{flex:1}
+.plan-skill{font-size:13px;font-weight:500;color:var(--text)}
+.plan-item.done .plan-skill{text-decoration:line-through;color:var(--mid)}
+.plan-meta{display:flex;gap:8px;margin-top:3px;flex-wrap:wrap}
+.plan-tag{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:2px 7px}
+.pt-critical{background:rgba(255,77,109,.12);color:var(--red)}
+.pt-important{background:rgba(255,159,62,.12);color:var(--orange)}
+.pt-nice{background:rgba(77,159,255,.12);color:var(--blue)}
+.pt-xp{background:rgba(168,255,62,.1);color:var(--green)}
+.plan-body{display:none;border-top:1px solid var(--b1)}
+.plan-item.open .plan-body{display:block}
+.plan-expand{color:var(--mid);font-size:13px;margin-left:auto;transition:transform .2s}
+.plan-item.open .plan-expand{transform:rotate(180deg)}
+
+/* RESOURCES */
+.resources-grid{padding:16px;display:flex;flex-direction:column;gap:6px}
+.res-section-label{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:8px 0 4px}
+.resource-link{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s3);border:1px solid var(--b1);text-decoration:none;transition:all .15s;color:var(--text)}
+.resource-link:hover{border-color:var(--b3);background:var(--s2)}
+.rl-icon{font-size:16px;width:24px;text-align:center;flex-shrink:0}
+.rl-info{flex:1}
+.rl-title{font-size:12px;font-weight:500;color:var(--text)}
+.rl-sub{font-size:10px;color:var(--mid)}
+.rl-badge{font-size:9px;font-weight:600;padding:2px 7px;background:rgba(77,159,255,.12);color:var(--blue)}
+
+/* ACHIEVEMENTS */
+.achievement-input{background:var(--s2);border:1px solid var(--b1);padding:0;margin-bottom:12px;overflow:hidden}
+.ai-header{padding:12px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.ai-title{font-size:12px;font-weight:500}
+.ai-action{font-size:10px;color:var(--blue);cursor:pointer;background:none;border:none;font-family:var(--font)}
+.ai-fields{padding:16px;display:flex;flex-direction:column;gap:10px}
+.field-group{display:flex;flex-direction:column;gap:4px}
+.field-label{font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--mid)}
+.field-input{background:var(--s3);border:1px solid var(--b1);color:var(--text);font-family:var(--font);font-size:12px;padding:10px 12px;outline:none;transition:border-color .15s}
+.field-input:focus{border-color:var(--b3)}
+.field-input::placeholder{color:var(--muted)}
+.generated-line{background:var(--s3);border:1px solid var(--b1);border-left:3px solid var(--green);padding:12px 14px;font-size:12px;color:var(--green);line-height:1.6;font-family:'Courier New',monospace;margin-top:8px;min-height:40px}
+.generated-line.empty{color:var(--muted);font-family:var(--font);font-size:11px}
+.copy-line-btn{background:transparent;border:1px solid var(--b2);color:var(--mid);font-size:10px;padding:5px 10px;cursor:pointer;margin-top:6px;font-family:var(--font);transition:all .15s}
+.copy-line-btn:hover{border-color:var(--green);color:var(--green)}
+
+/* INTERVIEW */
+.interview-card{background:var(--s1);border:1px solid var(--b1);padding:24px;margin-bottom:16px}
+.q-num{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
+.q-text{font-size:15px;font-weight:500;color:var(--text);line-height:1.5;margin-bottom:16px}
+.q-tips{background:rgba(77,159,255,.06);border:1px solid rgba(77,159,255,.15);padding:12px;margin-bottom:14px}
+.q-tips-label{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:6px}
+.q-tips ul{list-style:none;padding:0}
+.q-tips li{font-size:11.5px;color:var(--mid);line-height:1.6;padding-left:14px;position:relative}
+.q-tips li::before{content:'→';position:absolute;left:0;color:var(--blue);font-size:10px}
+.answer-area{width:100%;background:var(--s3);border:1px solid var(--b1);color:var(--text);font-family:var(--font);font-size:12px;line-height:1.7;padding:14px;resize:vertical;min-height:80px;outline:none}
+.answer-area:focus{border-color:var(--b3)}
+.answer-footer{display:flex;gap:8px;margin-top:8px;align-items:center}
+.save-answer-btn{background:var(--blue);color:#fff;font-family:var(--font);font-size:11px;font-weight:600;padding:7px 14px;border:none;cursor:pointer}
+.answer-saved{font-size:10px;color:var(--green);display:none}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:var(--font);letter-spacing:.5px;text-transform:uppercase;transition:all .15s}
+.btn-green{background:var(--green);color:#000}
+.btn-green:hover{background:#bfff50}
+.btn-ghost{background:transparent;color:var(--mid);border:1px solid var(--b1)}
+.btn-ghost:hover{color:var(--text);border-color:var(--b2)}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.stat{background:var(--s1);border:1px solid var(--b1);padding:16px}
+.stat-n{font-family:var(--display);font-size:24px;font-weight:700;line-height:1;margin-bottom:4px}
+.stat-l{font-size:10px;color:var(--mid);text-transform:uppercase;letter-spacing:1px}
+
+/* LOADING */
+.loading{display:none;text-align:center;padding:40px}
+.loading.show{display:block}
+.spinner{width:32px;height:32px;border:2px solid var(--b2);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:12px;color:var(--mid)}
+.loading-steps{font-size:11px;color:var(--muted);margin-top:8px}
+
+/* NOTIFICATION */
+.notif{position:fixed;bottom:24px;right:24px;background:var(--s1);border:1px solid var(--green);padding:12px 18px;font-size:12px;color:var(--green);z-index:999;transform:translateY(100px);opacity:0;transition:all .3s}
+.notif.show{transform:translateY(0);opacity:1}
+
+/* PROGRESS SECTION */
+.progress-section{margin-bottom:28px}
+.ps-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mid);margin-bottom:12px}
+.skill-progress-item{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.spi-name{font-size:12px;color:var(--text);width:160px;flex-shrink:0}
+.spi-bar{flex:1;background:var(--b1);height:6px}
+.spi-fill{height:100%;background:var(--green);transition:width .5s ease}
+.spi-val{font-size:11px;color:var(--mid);width:32px;text-align:right}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--mid);font-size:13px;line-height:1.8}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.4}
+
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{margin-left:0}
+  .analyzer-grid,.skill-gap-grid,.stats-grid{grid-template-columns:1fr}
+}
+/* TASK MAP */
+.tm-block{margin-bottom:20px}
+.tm-block-header{display:flex;align-items:center;gap:14px;padding:15px 20px;background:var(--s2);border:1px solid var(--b1);cursor:pointer;transition:background .15s;user-select:none}
+.tm-block-header:hover{background:var(--s3)}
+.tm-block-num{font-family:var(--display);font-size:10px;font-weight:700;color:var(--green);width:28px;flex-shrink:0}
+.tm-block-title{font-size:13px;font-weight:600;color:var(--text);flex:1}
+.tm-block-prog{font-size:11px;color:var(--mid)}
+.tm-block-prog b{color:var(--green)}
+.tm-chevron{color:var(--mid);transition:transform .2s;font-size:13px}
+.tm-block.collapsed .tm-chevron{transform:rotate(-90deg)}
+.tm-block-body{display:block}
+.tm-block.collapsed .tm-block-body{display:none}
+.tm-task{background:var(--s1);border:1px solid var(--b1);border-top:none;overflow:hidden}
+.tm-task-head{display:flex;align-items:flex-start;gap:12px;padding:13px 20px;cursor:pointer;transition:background .15s}
+.tm-task-head:hover{background:var(--s2)}
+.tm-chk{width:18px;height:18px;min-width:18px;border:1.5px solid var(--b2);display:flex;align-items:center;justify-content:center;margin-top:1px;cursor:pointer;transition:all .2s;flex-shrink:0}
+.tm-task.done .tm-chk{background:var(--green);border-color:var(--green)}
+.tm-chk-icon{display:none;font-size:10px;color:#000;font-weight:700}
+.tm-task.done .tm-chk-icon{display:block}
+.tm-task-info{flex:1;min-width:0}
+.tm-task-title{font-size:13px;font-weight:500;color:var(--text);line-height:1.4;margin-bottom:4px}
+.tm-task.done .tm-task-title{text-decoration:line-through;color:var(--mid)}
+.tm-task-tags{display:flex;gap:5px;flex-wrap:wrap}
+.tm-tag{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:2px 7px}
+.tmt-go{background:rgba(168,255,62,.1);color:var(--green)}
+.tmt-res{background:rgba(77,159,255,.1);color:var(--blue)}
+.tmt-hot{background:rgba(255,77,109,.1);color:var(--red)}
+.tmt-ai{background:rgba(180,126,255,.1);color:var(--purple)}
+.tm-expand{color:var(--mid);font-size:12px;margin-left:auto;transition:transform .2s;flex-shrink:0;margin-top:2px}
+.tm-task.open .tm-expand{transform:rotate(180deg)}
+.tm-body{display:none;border-top:1px solid var(--b1)}
+.tm-task.open .tm-body{display:block}
+.tm-section{padding:16px 20px;border-bottom:1px solid var(--b1)}
+.tm-section:last-child{border-bottom:none}
+.tm-sec-label{font-size:9px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.tm-goal-text{font-size:13px;color:var(--mid);line-height:1.75}
+.tm-goal-text strong{color:var(--text);font-weight:500}
+.tm-steps{list-style:none}
+.tm-steps li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--b1);font-size:12.5px;color:var(--mid);line-height:1.6}
+.tm-steps li:last-child{border-bottom:none}
+.tm-step-n{font-family:var(--display);font-size:9px;font-weight:700;color:var(--green);min-width:20px;margin-top:2px}
+.tm-step-text{flex:1}
+.tm-step-copy{background:none;border:1px solid var(--b2);color:var(--muted);font-size:9px;padding:2px 6px;cursor:pointer;font-family:var(--font);flex-shrink:0;margin-top:2px;transition:all .15s}
+.tm-step-copy:hover{border-color:var(--b3);color:var(--mid)}
+.tm-step-copy.copied{border-color:var(--green);color:var(--green)}
+.tm-tools-list{display:flex;flex-direction:column;gap:6px}
+.tm-tool{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--b1);text-decoration:none;color:var(--text);transition:all .15s}
+.tm-tool:hover{border-color:var(--b3);background:var(--s3)}
+.tm-tool-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+.tm-tool-info{flex:1}
+.tm-tool-name{font-size:12px;font-weight:500;color:var(--text)}
+.tm-tool-desc{font-size:10px;color:var(--mid);margin-top:1px}
+.tm-tool-type{font-size:9px;font-weight:600;padding:2px 7px;background:rgba(77,159,255,.1);color:var(--blue);flex-shrink:0}
+.tm-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tm-metric{background:var(--s2);border:1px solid var(--b1);padding:12px;cursor:pointer;transition:border-color .15s;position:relative}
+.tm-metric:hover{border-color:var(--b3)}
+.tm-metric-name{font-size:11px;font-weight:500;color:var(--text);margin-bottom:5px}
+.tm-metric-val{font-size:12px;color:var(--muted);min-height:18px}
+.tm-metric.filled .tm-metric-val{color:var(--green)}
+.tm-log{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.tm-log-entry{background:var(--s2);border:1px solid var(--b1);border-left:2px solid var(--green);padding:10px 12px;position:relative}
+.tm-log-date{font-size:10px;color:var(--muted);margin-bottom:3px}
+.tm-log-text{font-size:12px;color:var(--mid);line-height:1.6;white-space:pre-wrap;word-break:break-word;padding-right:20px}
+.tm-log-actions{display:flex;gap:6px;margin-top:6px}
+.tm-log-copy{background:none;border:1px solid var(--b2);color:var(--muted);font-size:9px;padding:2px 6px;cursor:pointer;font-family:var(--font);transition:all .15s}
+.tm-log-copy:hover{border-color:var(--green);color:var(--green)}
+.tm-log-del{background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;position:absolute;top:8px;right:8px}
+.tm-log-del:hover{color:var(--red)}
+.tm-note-area{width:100%;background:var(--s2);border:none;border-top:1px solid var(--b1);color:var(--text);font-family:var(--font);font-size:12px;line-height:1.7;padding:12px 20px;resize:none;min-height:80px;outline:none}
+.tm-note-area::placeholder{color:var(--muted)}
+.tm-note-area:focus{background:var(--s3)}
+.tm-note-toolbar{display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--s2);border-top:1px solid var(--b1);flex-wrap:wrap}
+.tm-save-btn{background:var(--green);color:#000;font-family:var(--font);font-size:10px;font-weight:700;padding:7px 14px;border:none;cursor:pointer;letter-spacing:.5px;text-transform:uppercase}
+.tm-save-btn:hover{background:#bfff50}
+.tm-copy-all{background:transparent;border:1px solid var(--b2);color:var(--mid);font-family:var(--font);font-size:10px;padding:7px 12px;cursor:pointer;transition:all .15s}
+.tm-copy-all:hover{border-color:var(--b3);color:var(--text)}
+.tm-save-status{font-size:10px;color:var(--green);opacity:0;transition:opacity .3s}
+.tm-save-status.show{opacity:1}
+.tm-filter-bar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.tm-filter{background:transparent;border:1px solid var(--b2);color:var(--mid);font-family:var(--font);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;cursor:pointer;transition:all .15s}
+.tm-filter:hover{border-color:var(--b3);color:var(--text)}
+.tm-filter.active{background:var(--green);color:#000;border-color:var(--green)}
+.tm-pbar{background:var(--b1);height:3px;margin-top:8px}
+.tm-pbar-fill{height:100%;background:var(--green);transition:width .4s ease}
+@media(max-width:640px){.tm-metrics{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">CareerPath AI</div>
+    <div class="sb-tagline">Твой путь в Big Tech</div>
+  </div>
+  <div class="sb-xp">
+    <div class="xp-label"><span>XP: <span id="xp-cur">0</span></span><span>до ур. <span id="xp-next-level">2</span>: <span id="xp-to-next">100</span> XP</span></div>
+    <div class="xp-bar"><div class="xp-fill" id="xp-bar" style="width:0%"></div></div>
+    <div class="xp-level" id="xp-level-label">Уровень 1 — Starter</div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-section">Главное</div>
+    <div class="sb-item active" onclick="nav('home',this)"><span class="si-icon">🏠</span> Дашборд</div>
+    <div class="sb-item" onclick="nav('analyzer',this)"><span class="si-icon">🤖</span> AI Анализ гэпов <span class="si-badge" id="badge-analyze">NEW</span></div>
+    <div class="sb-section">Развитие</div>
+    <div class="sb-item" onclick="nav('plan',this)"><span class="si-icon">📋</span> Мой план <span class="si-badge" id="plan-count-badge" style="display:none">0</span></div>
+    <div class="sb-item" onclick="nav('taskmap',this)"><span class="si-icon">🗺️</span> Карта заданий</div>
+    <div class="sb-item" onclick="nav('achievements',this)"><span class="si-icon">🏆</span> Достижения</div>
+    <div class="sb-item" onclick="nav('interview',this)"><span class="si-icon">🎯</span> Подготовка к интервью</div>
+    <div class="sb-section">Профиль</div>
+    <div class="sb-item" onclick="nav('resume',this)"><span class="si-icon">📄</span> Резюме-конструктор</div>
+  </div>
+  <div class="sb-badges">
+    <div class="badges-label">Бейджи</div>
+    <div class="badges-grid" id="badges-grid"></div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="tb-title" id="tb-title">Дашборд</div>
+    <div class="tb-right">
+      <div class="tb-streak" id="tb-streak">🔥 <span id="streak-num">0</span> дней</div>
+      <div class="tb-points">⚡ <span id="tb-xp">0</span> XP</div>
+    </div>
+  </div>
+
+  <div style="flex:1;overflow-y:auto">
+
+    <!-- HOME -->
+    <div class="view active" id="view-home">
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-n" id="s-skills" style="color:var(--green)">0</div><div class="stat-l">Навыков изучено</div></div>
+        <div class="stat"><div class="stat-n" id="s-plan" style="color:var(--blue)">0</div><div class="stat-l">В плане</div></div>
+        <div class="stat"><div class="stat-n" id="s-achieve" style="color:var(--orange)">0</div><div class="stat-l">Достижений</div></div>
+        <div class="stat"><div class="stat-n" id="s-xp" style="color:var(--purple)">0</div><div class="stat-l">Всего XP</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👋 Привет, Иван</div>
+        <div class="card-sub">Начни с <strong style="color:var(--green)">AI-анализа гэпов</strong> — вставь своё резюме и описание вакансии. Система проанализирует разрыв в навыках и составит персональный план с ресурсами.</div>
+        <div style="margin-top:16px">
+          <button class="btn btn-green" onclick="nav('analyzer',document.querySelector('[onclick*=analyzer]'))">🤖 Начать анализ</button>
+        </div>
+      </div>
+
+      <div class="progress-section" id="home-progress" style="display:none">
+        <div class="ps-label">Прогресс по навыкам</div>
+        <div id="skill-progress-list"></div>
+      </div>
+
+      <div class="card" id="home-recent-card" style="display:none">
+        <div class="card-title">Последние достижения</div>
+        <div id="home-recent"></div>
+      </div>
+    </div>
+
+    <!-- ANALYZER -->
+    <div class="view" id="view-analyzer">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">🤖 AI Анализ навыковых гэпов</div>
+        <div class="card-sub">Вставь описание вакансии — это обязательно. Резюме — опционально, но с ним анализ будет точнее.</div>
+      </div>
+
+      <div class="analyzer-grid">
+        <div class="input-block">
+          <div class="input-label"><span>📄</span> Твоё резюме / навыки <span style="font-size:9px;color:var(--muted);margin-left:6px;font-weight:400;letter-spacing:0;text-transform:none">(необязательно)</span></div>
+          <textarea id="resume-input" placeholder="Необязательно. Если заполнишь — анализ будет точнее.
+
+Например:
+- 2 года в маркетинге
+- Работал над B2B маркетплейсом GRUZAPP
+- Настраивал Яндекс Директ
+- Писал контент для VC.ru
+- Использую ChatGPT в работе"></textarea>
+        </div>
+        <div class="input-block">
+          <div class="input-label"><span>🎯</span> Целевая вакансия <span style="font-size:9px;color:var(--red);margin-left:6px;font-weight:400;letter-spacing:0;text-transform:none">обязательно</span></div>
+          <textarea id="job-input" placeholder="Вставь описание вакансии или опиши целевую роль...
+
+Например:
+Product Marketing Manager в Яндекс
+— Разработка контент-стратегий
+— Управление командой
+— Работа с инфлюенсерами
+— Аналитика и отчётность
+— Знание рынка"></textarea>
+        </div>
+      </div>
+
+      <button class="analyze-btn" id="analyze-btn" onclick="runAnalysis()">🤖 Анализировать гэп и составить план</button>
+
+      <div class="loading" id="analysis-loading">
+        <div class="spinner"></div>
+        <div class="loading-text">AI анализирует профиль...</div>
+        <div class="loading-steps" id="loading-step">Сопоставляю навыки с требованиями вакансии</div>
+      </div>
+
+      <div class="results-container" id="analysis-results">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 16px">
+          <div style="font-family:var(--display);font-size:13px;font-weight:700">Анализ гэпов</div>
+          <button class="btn btn-ghost" onclick="addAllToPlan()">+ Добавить всё в план</button>
+        </div>
+        <div id="gaps-grid" class="skill-gap-grid"></div>
+        <div style="font-family:var(--display);font-size:13px;font-weight:700;margin:24px 0 16px">AI Рекомендации</div>
+        <div id="ai-summary" class="card"></div>
+      </div>
+    </div>
+
+    <!-- PLAN -->
+    <div class="view" id="view-plan">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px">Мой план развития</div>
+          <div style="font-size:12px;color:var(--mid)">Навыки добавленные из AI-анализа с ресурсами и задачами</div>
+        </div>
+      </div>
+      <div id="plan-list">
+        <div class="empty"><div class="empty-icon">📋</div>Пока нет навыков в плане.<br>Запусти AI-анализ и добавь навыки из результатов.</div>
+      </div>
+    </div>
+
+    <!-- ACHIEVEMENTS -->
+    <div class="view" id="view-achievements">
+      <div style="margin-bottom:20px">
+        <div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px">Мои достижения</div>
+        <div style="font-size:12px;color:var(--mid)">Документируй результаты — они автоматически формируют резюме</div>
+      </div>
+      <div id="achievements-list"></div>
+      <div style="font-family:var(--display);font-size:13px;font-weight:700;margin:24px 0 16px">+ Добавить достижение</div>
+      <div class="achievement-input">
+        <div class="ai-header">
+          <div class="ai-title">Новое достижение</div>
+          <button class="ai-action" onclick="generateAchLine()">✨ AI сформулирует строку</button>
+        </div>
+        <div class="ai-fields">
+          <div class="field-group">
+            <div class="field-label">Что сделал</div>
+            <input type="text" class="field-input" id="ach-what" placeholder="Запустил контент-стратегию для GRUZAPP">
+          </div>
+          <div class="field-group">
+            <div class="field-label">Метрика (цифра)</div>
+            <input type="text" class="field-input" id="ach-metric" placeholder="+3000 просмотров, 15 лидов, -23% CPL...">
+          </div>
+          <div class="field-group">
+            <div class="field-label">За какой период</div>
+            <input type="text" class="field-input" id="ach-period" placeholder="за 2 месяца, за 1 квартал...">
+          </div>
+          <div class="generated-line empty" id="ach-line">Заполни поля и нажми «AI сформулирует строку»</div>
+          <div style="display:flex;gap:8px">
+            <button class="copy-line-btn" onclick="copyAchLine()">📋 Копировать</button>
+            <button class="btn btn-green" onclick="saveAchievement()" style="font-size:10px;padding:7px 14px">💾 Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASK MAP -->
+    <div class="view" id="view-taskmap">
+      <div style="margin-bottom:20px">
+        <div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px">Карта заданий</div>
+        <div style="font-size:12px;color:var(--mid)">Подробный план с инструментами, шагами, метриками и отчётами</div>
+      </div>
+      <div class="tm-filter-bar">
+        <button class="tm-filter active" onclick="tmFilter('all',this)">Все</button>
+        <button class="tm-filter" onclick="tmFilter('active',this)">В процессе</button>
+        <button class="tm-filter" onclick="tmFilter('done',this)">Выполненные</button>
+        <div style="margin-left:auto;font-size:11px;color:var(--mid)">Выполнено: <b id="tm-done-count" style="color:var(--green)">0</b> / <b id="tm-total-count">0</b></div>
+      </div>
+      <div id="tm-blocks"></div>
+    </div>
+
+    <!-- INTERVIEW -->
+    <div class="view" id="view-interview">
+      <div style="margin-bottom:20px">
+        <div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px">Подготовка к интервью</div>
+        <div style="font-size:12px;color:var(--mid)">Тренировочные вопросы на основе твоего плана навыков</div>
+      </div>
+      <div id="interview-questions"></div>
+    </div>
+
+    <!-- RESUME -->
+    <div class="view" id="view-resume">
+      <div style="margin-bottom:20px">
+        <div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px">Резюме-конструктор</div>
+        <div style="font-size:12px;color:var(--mid)">Автоматически собирается из твоих достижений и выполненных навыков</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Блок «Опыт» — GRUZAPP</div>
+        <div id="resume-experience" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;min-height:40px"></div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="copyBlock('resume-experience',this)" style="font-size:10px">📋 Копировать</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Навыки (из выполненных задач)</div>
+        <div id="resume-skills" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;min-height:40px"></div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="copyBlock('resume-skills',this)" style="font-size:10px">📋 Копировать</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"></div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let S = {
+  xp: 0, level: 1, streak: 0, lastDate: null,
+  plan: [],        // [{id, skill, priority, desc, done, resources, steps}]
+  achievements: [], // [{id, what, metric, period, line, date}]
+  answers: {},     // questionId: text
+  gapResults: null,
+};
+
+const LEVELS = [
+  {name:'Starter',xp:0},{name:'Explorer',xp:100},{name:'Builder',xp:300},
+  {name:'Practitioner',xp:600},{name:'Specialist',xp:1000},{name:'Expert',xp:1500},
+  {name:'Lead',xp:2200},{name:'Senior',xp:3000},{name:'Principal',xp:4000},{name:'Director',xp:5500}
+];
+
+const BADGES_DEF = [
+  {id:'first_analysis',icon:'🤖',name:'Первый анализ',desc:'Запустил AI-анализ'},
+  {id:'first_plan',icon:'📋',name:'Планировщик',desc:'Добавил первый навык в план'},
+  {id:'first_done',icon:'✅',name:'Выполнено!',desc:'Закрыл первый навык'},
+  {id:'first_ach',icon:'🏆',name:'Достижение',desc:'Добавил первое достижение'},
+  {id:'three_done',icon:'🔥',name:'На ходу',desc:'Закрыл 3 навыка'},
+  {id:'five_done',icon:'⚡',name:'Momentum',desc:'Закрыл 5 навыков'},
+  {id:'interview_prep',icon:'🎯',name:'Готов к бою',desc:'Ответил на 3 вопроса'},
+];
+
+let earnedBadges = new Set();
+
+function save(){ try{localStorage.setItem('cp_s',JSON.stringify(S));localStorage.setItem('cp_b',JSON.stringify([...earnedBadges]));}catch(e){} }
+function load(){
+  try{
+    const s=localStorage.getItem('cp_s'); if(s) S=Object.assign(S,JSON.parse(s));
+    const b=localStorage.getItem('cp_b'); if(b) earnedBadges=new Set(JSON.parse(b));
+  }catch(e){}
+}
+
+// ─── XP / LEVELS ─────────────────────────────────────────────────────────────
+function addXP(amount, label){
+  S.xp += amount;
+  save();
+  updateXPUI();
+  showNotif(`+${amount} XP — ${label}`);
+  checkBadges();
+}
+
+function updateXPUI(){
+  let lv=0;
+  for(let i=0;i<LEVELS.length;i++){if(S.xp>=LEVELS[i].xp)lv=i;}
+  S.level=lv+1;
+  const cur=LEVELS[lv].xp;
+  const next=LEVELS[lv+1]?LEVELS[lv+1].xp:LEVELS[lv].xp+1000;
+  const pct=Math.min(100,Math.round((S.xp-cur)/(next-cur)*100));
+  document.getElementById('xp-bar').style.width=pct+'%';
+  document.getElementById('xp-cur').textContent=S.xp;
+  document.getElementById('xp-to-next').textContent=next-S.xp;
+  document.getElementById('xp-next-level').textContent=lv+2;
+  document.getElementById('xp-level-label').textContent=`Уровень ${S.level} — ${LEVELS[lv].name}`;
+  document.getElementById('tb-xp').textContent=S.xp;
+  document.getElementById('s-xp').textContent=S.xp;
+  document.getElementById('streak-num').textContent=S.streak||0;
+}
+
+// ─── BADGES ──────────────────────────────────────────────────────────────────
+function checkBadges(){
+  const done=S.plan.filter(p=>p.done).length;
+  const ansCount=Object.values(S.answers).filter(v=>v&&v.trim()).length;
+  if(S.gapResults) tryBadge('first_analysis');
+  if(S.plan.length>0) tryBadge('first_plan');
+  if(done>=1) tryBadge('first_done');
+  if(S.achievements.length>0) tryBadge('first_ach');
+  if(done>=3) tryBadge('three_done');
+  if(done>=5) tryBadge('five_done');
+  if(ansCount>=3) tryBadge('interview_prep');
+  renderBadges();
+}
+function tryBadge(id){
+  if(!earnedBadges.has(id)){
+    earnedBadges.add(id);
+    const b=BADGES_DEF.find(b=>b.id===id);
+    if(b){ showNotif(`🏅 Бейдж: ${b.name} — ${b.desc}`); addXP(50,'бейдж получен'); }
+    save();
+  }
+}
+function renderBadges(){
+  const grid=document.getElementById('badges-grid');
+  if(!grid) return;
+  grid.innerHTML=BADGES_DEF.map(b=>`<div class="badge ${earnedBadges.has(b.id)?'earned':'locked'}" title="${b.name}: ${b.desc}">${b.icon}</div>`).join('');
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function nav(id, el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const titles={home:'Дашборд',analyzer:'AI Анализ гэпов',plan:'Мой план',achievements:'Достижения',interview:'Подготовка к интервью',resume:'Резюме-конструктор'};
+  document.getElementById('tb-title').textContent=titles[id]||id;
+  if(id==='plan') renderPlan();
+  if(id==='achievements') renderAchievements();
+  if(id==='interview') renderInterview();
+  if(id==='resume') renderResume();
+  if(id==='home') renderHome();
+}
+
+// ─── AI ANALYSIS ─────────────────────────────────────────────────────────────
+const RESOURCES_DB = {
+  'контент-стратегия': [
+    {title:'Контент-маркетинг для B2B — Coursera',url:'https://www.coursera.org/learn/content-marketing',type:'Курс',icon:'🎓'},
+    {title:'Как составить контент-план — VC.ru',url:'https://vc.ru/marketing/content-plan',type:'Статья',icon:'📖'},
+    {title:'HubSpot Content Marketing Certification',url:'https://academy.hubspot.com/courses/content-marketing',type:'Сертификат',icon:'🏅'},
+  ],
+  'seo': [
+    {title:'SEO для начинающих — Яндекс',url:'https://yandex.ru/adv/edu',type:'Курс',icon:'🎓'},
+    {title:'Ahrefs SEO Guide',url:'https://ahrefs.com/blog/learn-seo/',type:'Гайд',icon:'📖'},
+    {title:'SEO продвижение — Нетология',url:'https://netology.ru/courses/seo',type:'Курс',icon:'🎓'},
+  ],
+  'performance': [
+    {title:'Яндекс Директ — официальное обучение',url:'https://yandex.ru/adv/edu',type:'Курс',icon:'🎓'},
+    {title:'Google Ads — Skillshop',url:'https://skillshop.google.com',type:'Курс',icon:'🎓'},
+    {title:'Performance Marketing — Нетология',url:'https://netology.ru/courses/performance-marketing',type:'Курс',icon:'🎓'},
+  ],
+  'аналитика': [
+    {title:'Google Analytics 4 — Coursera',url:'https://www.coursera.org/learn/google-analytics',type:'Курс',icon:'🎓'},
+    {title:'Продуктовая аналитика — Яндекс Практикум',url:'https://practicum.yandex.ru/product-analyst/',type:'Курс',icon:'🎓'},
+    {title:'SQL для аналитиков — Stepik',url:'https://stepik.org/course/63054',type:'Курс',icon:'🎓'},
+  ],
+  'product management': [
+    {title:'Product Manager — Яндекс Практикум',url:'https://practicum.yandex.ru/product-manager/',type:'Курс',icon:'🎓'},
+    {title:'PM School — бесплатный курс',url:'https://pmschool.io',type:'Курс',icon:'🎓'},
+    {title:'Inspired — Marty Cagan',url:'https://www.svpg.com/inspired-how-to-create-products-customers-love/',type:'Книга',icon:'📚'},
+  ],
+  'данные': [
+    {title:'Python для анализа данных — Coursera',url:'https://www.coursera.org/learn/python-analysis',type:'Курс',icon:'🎓'},
+    {title:'Tableau Public',url:'https://public.tableau.com',type:'Инструмент',icon:'🔧'},
+    {title:'DataCamp — Data Analyst Track',url:'https://www.datacamp.com/tracks/data-analyst',type:'Курс',icon:'🎓'},
+  ],
+  'управление командой': [
+    {title:'Leadership Principles — Amazon',url:'https://www.amazon.jobs/content/en/our-workplace/leadership-principles',type:'Статья',icon:'📖'},
+    {title:'Managing Teams — Coursera',url:'https://www.coursera.org/learn/managing-people',type:'Курс',icon:'🎓'},
+    {title:'Radical Candor — Kim Scott',url:'https://www.radicalcandor.com',type:'Книга',icon:'📚'},
+  ],
+  'ai': [
+    {title:'ChatGPT для маркетологов — Udemy',url:'https://www.udemy.com/course/chatgpt-marketing/',type:'Курс',icon:'🎓'},
+    {title:'Prompt Engineering Guide',url:'https://www.promptingguide.ai/ru',type:'Гайд',icon:'📖'},
+    {title:'AI для продуктового маркетинга',url:'https://learnprompting.org',type:'Курс',icon:'🎓'},
+  ],
+  'default': [
+    {title:'LinkedIn Learning',url:'https://www.linkedin.com/learning/',type:'Платформа',icon:'💼'},
+    {title:'Coursera',url:'https://www.coursera.org',type:'Платформа',icon:'🎓'},
+    {title:'Udemy',url:'https://www.udemy.com',type:'Платформа',icon:'🎓'},
+  ]
+};
+
+function getResources(skill){
+  const sl = skill.toLowerCase();
+  for(const [key, res] of Object.entries(RESOURCES_DB)){
+    if(sl.includes(key)) return res;
+  }
+  return RESOURCES_DB.default;
+}
+
+async function runAnalysis(){
+  const resume = document.getElementById('resume-input').value.trim();
+  const job = document.getElementById('job-input').value.trim();
+  if(!job){ showNotif('⚠️ Заполни описание вакансии'); return; }
+
+  const btn = document.getElementById('analyze-btn');
+  const loading = document.getElementById('analysis-loading');
+  const results = document.getElementById('analysis-results');
+
+  btn.disabled = true;
+  loading.classList.add('show');
+  results.classList.remove('show');
+
+  const steps = [
+    resume ? 'Анализирую твой опыт и навыки...' : 'Анализирую требования вакансии...',
+    'Сопоставляю с требованиями вакансии...',
+    'Приоритизирую навыковые гэпы...',
+    'Подбираю обучающие ресурсы...',
+    'Формирую персональный план...'
+  ];
+  let si = 0;
+  const stepEl = document.getElementById('loading-step');
+  const stepInt = setInterval(()=>{ if(si<steps.length){stepEl.textContent=steps[si++];} }, 1200);
+
+  try {
+    const profileSection = resume
+      ? `ПРОФИЛЬ КАНДИДАТА:\n${resume}`
+      : `ПРОФИЛЬ КАНДИДАТА: не указан. Составь анализ только на основе вакансии — определи ключевые навыки и создай универсальный план развития для специалиста без опыта в этой области.`;
+
+    const prompt = `Ты карьерный коуч и продуктовый стратег. Проанализируй профиль кандидата и целевую вакансию.
+
+${profileSection}
+
+ЦЕЛЕВАЯ ВАКАНСИЯ:
+${job}
+
+Выдай анализ в формате JSON:
+{
+  "summary": "2-3 предложения — общий вывод по гэпу",
+  "gaps": [
+    {
+      "skill": "название навыка",
+      "priority": "critical|important|nice",
+      "current_level": 0-100,
+      "required_level": 0-100,
+      "description": "почему важен и как развивать (1-2 предложения)",
+      "quick_win": "самое быстрое действие для получения этого навыка"
+    }
+  ],
+  "strengths": ["сильная сторона 1", "сильная сторона 2"],
+  "action_plan": "конкретный план на 3 месяца, 3-4 предложения"
+}
+
+Выдай ТОЛЬКО JSON без markdown-обёртки.`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1500,
+        messages: [{role:"user", content: prompt}]
+      })
+    });
+
+    clearInterval(stepInt);
+    const data = await response.json();
+    const raw = data.content[0].text;
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    S.gapResults = parsed;
+    save();
+    renderResults(parsed);
+    addXP(80, 'AI-анализ завершён');
+    checkBadges();
+
+  } catch(e) {
+    clearInterval(stepInt);
+    // Fallback demo data
+    const demo = {
+      summary: "У тебя сильная база в контент-маркетинге и B2B, но для целевой вакансии не хватает управленческого опыта, глубокой аналитики и опыта с командой. Хорошая новость — 3 из 5 гэпов закрываются практикой за 2-3 месяца.",
+      gaps: [
+        {skill:"Управление командой",priority:"critical",current_level:10,required_level:80,description:"Вакансия требует опыта руководства копирайтерами, дизайнерами, SMM. Нужно получить хотя бы 1 человека в подчинение.",quick_win:"Возьми фрилансера-копирайтера в GRUZAPP и управляй им"},
+        {skill:"Инфлюенс-маркетинг",priority:"critical",current_level:20,required_level:75,description:"Работа с блогерами — ключевое требование. Нужны реальные кейсы переговоров и размещений.",quick_win:"Найди 3 Telegram-канала в нише логистики и договорись о размещении"},
+        {skill:"Продвинутая аналитика",priority:"important",current_level:35,required_level:70,description:"Умеешь настраивать UTM, но нужны регулярные отчёты с динамикой и A/B тесты.",quick_win:"Сделай еженедельный дашборд в Google Sheets и веди 4 недели"},
+        {skill:"Контент-стратегия (масштаб)",priority:"important",current_level:50,required_level:80,description:"Есть опыт планирования, но нужен опыт многоканальной стратегии с измеримыми результатами.",quick_win:"Составь стратегию на 3 месяца с KPI для каждого канала"},
+        {skill:"Видеопродакшн",priority:"nice",current_level:40,required_level:60,description:"Есть опыт со сценариями. Добавь монтаж и руководство съёмочным процессом.",quick_win:"Сними и смонтируй 1 видео для GRUZAPP самостоятельно"},
+      ],
+      strengths: ["Опыт с B2B продуктом","Контент и сторителлинг","AI-инструменты","Понимание рынка логистики"],
+      action_plan: "Месяц 1: Возьми фрилансера в подчинение + найди 3 блогера. Месяц 2: Запусти размещения + сделай дашборд с динамикой. Месяц 3: Собери портфолио с цифрами + обнови резюме + начни отклики."
+    };
+    S.gapResults = demo;
+    save();
+    renderResults(demo);
+    addXP(80, 'Анализ завершён');
+    checkBadges();
+  }
+
+  btn.disabled = false;
+  loading.classList.remove('show');
+}
+
+function renderResults(data){
+  const results = document.getElementById('analysis-results');
+  const grid = document.getElementById('gaps-grid');
+  const summary = document.getElementById('ai-summary');
+
+  grid.innerHTML = data.gaps.map(g => {
+    const pLabel = {critical:'🔴 Критично',important:'🟡 Важно',nice:'🔵 Плюс'};
+    const pClass = {critical:'critical',important:'important',nice:'nice'};
+    const gap = g.required_level - g.current_level;
+    return `<div class="gap-card ${pClass[g.priority]||'nice'}">
+      <div class="gap-priority">${pLabel[g.priority]||g.priority}</div>
+      <div class="gap-skill">${g.skill}</div>
+      <div class="gap-desc">${g.description}</div>
+      <div class="gap-bar-wrap"><div class="gap-bar" style="width:${g.current_level}%"></div></div>
+      <div class="gap-bar-labels"><span>Сейчас: ${g.current_level}%</span><span>Цель: ${g.required_level}%</span></div>
+      <div style="font-size:10px;color:var(--orange);margin-top:8px;padding:6px 8px;background:rgba(255,159,62,.06);border:1px solid rgba(255,159,62,.15)">
+        ⚡ ${g.quick_win}
+      </div>
+      <button class="add-to-plan" id="atp-${g.skill.replace(/\s/g,'-')}" onclick="addToPlan(${JSON.stringify(g).replace(/"/g,'&quot;')})">+ Добавить в план</button>
+    </div>`;
+  }).join('');
+
+  summary.innerHTML = `
+    <div style="font-size:13px;color:var(--mid);line-height:1.8;margin-bottom:16px">${data.summary}</div>
+    ${data.strengths ? `<div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:8px">Твои сильные стороны</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${data.strengths.map(s=>`<span style="background:rgba(168,255,62,.08);border:1px solid rgba(168,255,62,.2);color:var(--green);font-size:11px;padding:3px 10px">${s}</span>`).join('')}</div>
+    </div>` : ''}
+    <div>
+      <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:8px">План на 3 месяца</div>
+      <div style="font-size:12px;color:var(--mid);line-height:1.8">${data.action_plan}</div>
+    </div>
+  `;
+
+  results.classList.add('show');
+}
+
+// ─── PLAN ─────────────────────────────────────────────────────────────────────
+function addToPlan(gap){
+  if(S.plan.find(p=>p.skill===gap.skill)) { showNotif('Уже в плане'); return; }
+  const item = {
+    id: Date.now().toString(),
+    skill: gap.skill,
+    priority: gap.priority,
+    desc: gap.description,
+    quickWin: gap.quick_win,
+    done: false,
+    resources: getResources(gap.skill),
+    steps: generateSteps(gap),
+    notes: '',
+  };
+  S.plan.push(item);
+  save();
+  addXP(20, 'навык добавлен в план');
+  showNotif(`✅ «${gap.skill}» добавлен в план`);
+  const btn = document.getElementById('atp-'+gap.skill.replace(/\s/g,'-'));
+  if(btn){ btn.textContent='✓ В плане'; btn.classList.add('added'); btn.disabled=true; }
+  updatePlanBadge();
+  checkBadges();
+}
+
+function addAllToPlan(){
+  if(!S.gapResults) return;
+  S.gapResults.gaps.forEach(g => { if(!S.plan.find(p=>p.skill===g.skill)) addToPlan(g); });
+}
+
+function generateSteps(gap){
+  return [
+    `Изучи базу: ${gap.quick_win}`,
+    `Применить на практике в реальном проекте (GRUZAPP)`,
+    `Зафиксируй результат с метрикой`,
+    `Добавь в резюме как достижение`,
+  ];
+}
+
+function updatePlanBadge(){
+  const b = document.getElementById('plan-count-badge');
+  const c = S.plan.filter(p=>!p.done).length;
+  if(b){ b.textContent=c; b.style.display=c>0?'':'none'; }
+  document.getElementById('s-plan').textContent=S.plan.length;
+}
+
+function renderPlan(){
+  const el = document.getElementById('plan-list');
+  if(!S.plan.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>Пока нет навыков в плане.<br>Запусти AI-анализ и добавь навыки.</div>';
+    return;
+  }
+  el.innerHTML = S.plan.map(p => {
+    const pTag = {critical:'pt-critical',important:'pt-important',nice:'pt-nice'};
+    const pLabel = {critical:'🔴 Критично',important:'🟡 Важно',nice:'🔵 Плюс'};
+    const xp = {critical:150,important:100,nice:50};
+    return `<div class="plan-item ${p.done?'done':''}" id="pi-${p.id}">
+      <div class="plan-header" onclick="togglePlanItem('${p.id}')">
+        <div class="plan-check" onclick="togglePlanDone(event,'${p.id}')"><span class="plan-check-icon">✓</span></div>
+        <div class="plan-info">
+          <div class="plan-skill">${p.skill}</div>
+          <div class="plan-meta">
+            <span class="plan-tag ${pTag[p.priority]||'pt-nice'}">${pLabel[p.priority]||p.priority}</span>
+            <span class="plan-tag pt-xp">+${xp[p.priority]||50} XP</span>
+          </div>
+        </div>
+        <div class="plan-expand">▾</div>
+      </div>
+      <div class="plan-body">
+        <div class="resources-grid">
+          <div style="font-size:12px;color:var(--mid);line-height:1.7;padding:0 0 12px">${p.desc}</div>
+          <div style="background:rgba(255,159,62,.06);border:1px solid rgba(255,159,62,.15);padding:10px;margin-bottom:12px">
+            <div style="font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--orange);margin-bottom:5px">⚡ Быстрый старт</div>
+            <div style="font-size:12px;color:var(--mid)">${p.quickWin}</div>
+          </div>
+          <div class="res-section-label">📚 Обучающие ресурсы</div>
+          ${p.resources.map(r=>`
+            <a href="${r.url}" target="_blank" class="resource-link">
+              <span class="rl-icon">${r.icon}</span>
+              <div class="rl-info"><div class="rl-title">${r.title}</div></div>
+              <span class="rl-badge">${r.type}</span>
+            </a>`).join('')}
+          <div class="res-section-label" style="margin-top:8px">✅ Шаги</div>
+          ${p.steps.map((s,i)=>`<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:12px;color:var(--mid)"><span style="color:var(--green);font-family:var(--display);font-size:10px;font-weight:700;min-width:20px">${i+1}.</span>${s}</div>`).join('')}
+          <div style="padding-top:12px">
+            <textarea class="field-input" style="min-height:60px;resize:vertical;padding:10px" placeholder="Заметки по этому навыку..." oninput="savePlanNote('${p.id}',this.value)">${p.notes||''}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function togglePlanItem(id){
+  const el = document.getElementById('pi-'+id);
+  el.classList.toggle('open');
+}
+
+function togglePlanDone(e, id){
+  e.stopPropagation();
+  const item = S.plan.find(p=>p.id===id);
+  if(!item) return;
+  item.done = !item.done;
+  save();
+  const el = document.getElementById('pi-'+id);
+  if(el){ if(item.done) el.classList.add('done'); else el.classList.remove('done'); }
+  if(item.done){
+    const xp = {critical:150,important:100,nice:50};
+    addXP(xp[item.priority]||50, `Навык «${item.skill}» освоен`);
+  }
+  document.getElementById('s-skills').textContent=S.plan.filter(p=>p.done).length;
+  updatePlanBadge();
+  checkBadges();
+}
+
+function savePlanNote(id, val){
+  const item = S.plan.find(p=>p.id===id);
+  if(item){ item.notes=val; save(); }
+}
+
+// ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────────
+async function generateAchLine(){
+  const what = document.getElementById('ach-what').value.trim();
+  const metric = document.getElementById('ach-metric').value.trim();
+  const period = document.getElementById('ach-period').value.trim();
+  if(!what){ showNotif('Заполни поле «Что сделал»'); return; }
+  const lineEl = document.getElementById('ach-line');
+  lineEl.textContent = 'Генерирую...';
+  lineEl.className = 'generated-line';
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:`Сформулируй одну строку для резюме на основе:
+Действие: ${what}
+Метрика: ${metric||'не указана'}
+Период: ${period||'не указан'}
+Формат: глагол прошедшего времени + что сделано + результат в цифрах (если есть). Только строка, без кавычек.`}]})});
+    const d = await r.json();
+    lineEl.textContent = d.content[0].text.trim();
+  } catch(e) {
+    const templates = [
+      what + (metric?` — ${metric}`:'') + (period?` за ${period}`:''),
+      `Разработал и внедрил ${what.toLowerCase()}${metric?`, результат: ${metric}`:''}`,
+    ];
+    lineEl.textContent = templates[0];
+  }
+}
+
+function copyAchLine(){
+  const t = document.getElementById('ach-line').textContent;
+  navigator.clipboard.writeText(t).then(()=>showNotif('Скопировано!'));
+}
+
+function saveAchievement(){
+  const what = document.getElementById('ach-what').value.trim();
+  const metric = document.getElementById('ach-metric').value.trim();
+  const period = document.getElementById('ach-period').value.trim();
+  const line = document.getElementById('ach-line').textContent;
+  if(!what){ showNotif('Заполни поле «Что сделал»'); return; }
+  S.achievements.push({id:Date.now().toString(), what, metric, period, line, date: new Date().toLocaleDateString('ru')});
+  save();
+  document.getElementById('ach-what').value='';
+  document.getElementById('ach-metric').value='';
+  document.getElementById('ach-period').value='';
+  document.getElementById('ach-line').textContent='Заполни поля и нажми «AI сформулирует строку»';
+  document.getElementById('ach-line').className='generated-line empty';
+  addXP(60, 'достижение задокументировано');
+  document.getElementById('s-achieve').textContent=S.achievements.length;
+  renderAchievements();
+  checkBadges();
+}
+
+function renderAchievements(){
+  const el = document.getElementById('achievements-list');
+  if(!S.achievements.length){ el.innerHTML=''; return; }
+  el.innerHTML = `<div style="margin-bottom:20px">
+    <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--mid);margin-bottom:12px">Задокументировано</div>
+    ${S.achievements.map(a=>`
+      <div style="background:var(--s2);border:1px solid var(--b1);border-left:3px solid var(--green);padding:14px 16px;margin-bottom:8px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${a.date}</div>
+        <div style="font-size:12px;color:var(--green);font-family:'Courier New',monospace;margin-bottom:6px">${a.line}</div>
+        <div style="display:flex;gap:12px;font-size:11px;color:var(--mid)">${a.metric?`<span>📊 ${a.metric}</span>`:''} ${a.period?`<span>⏱ ${a.period}</span>`:''}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+// ─── INTERVIEW ────────────────────────────────────────────────────────────────
+const INTERVIEW_QUESTIONS = [
+  {id:'q1',skill:'Продуктовый маркетинг',q:'Расскажи о случае, когда ты запускал маркетинговую стратегию с нуля. Как ты определял приоритеты?',tips:['Используй структуру STAR: Ситуация → Задача → Действие → Результат','Обязательно упомяни конкретные метрики','Покажи как ты принимал решения при ограниченных ресурсах']},
+  {id:'q2',skill:'Аналитика',q:'Как ты измеряешь эффективность контент-маркетинга? Какие метрики для тебя ключевые?',tips:['Назови 3–5 конкретных метрик (охват, CTR, конверсия, CAC)','Объясни как метрики связаны с бизнес-результатом','Приведи пример из GRUZAPP']},
+  {id:'q3',skill:'Управление',q:'Как ты работаешь с подрядчиками и внешними исполнителями? Как контролируешь качество?',tips:['Опиши конкретный процесс: бриф → проверка → обратная связь','Упомяни инструменты (Notion, Trello, Telegram)','Расскажи о случае когда что-то пошло не так']},
+  {id:'q4',skill:'Инфлюенс',q:'Как ты подбираешь блогеров/каналы для продвижения? По каким критериям?',tips:['Критерии: ER, аудитория, тематика, стоимость','Упомяни как проверяешь качество аудитории','Расскажи об измерении результата размещения']},
+  {id:'q5',skill:'Стратегия',q:'Как ты конкурируешь с сильным игроком на рынке? Расскажи о стратегии дифференциации.',tips:['Используй пример ATI vs GRUZAPP','Покажи что анализировал конкурента системно','Объясни как нашёл нишу или незакрытую боль']},
+  {id:'q6',skill:'AI',q:'Как ты используешь AI в своей работе? Приведи конкретные примеры.',tips:['Назови 3+ конкретных кейса использования','Упомяни инструменты: ChatGPT, Claude, Midjourney','Расскажи об AI-агентах которых ты создал']},
+];
+
+function renderInterview(){
+  const el = document.getElementById('interview-questions');
+  el.innerHTML = INTERVIEW_QUESTIONS.map(q => {
+    const saved = S.answers[q.id]||'';
+    return `<div class="interview-card">
+      <div class="q-num">${q.skill}</div>
+      <div class="q-text">${q.q}</div>
+      <div class="q-tips">
+        <div class="q-tips-label">💡 Как отвечать</div>
+        <ul>${q.tips.map(t=>`<li>${t}</li>`).join('')}</ul>
+      </div>
+      <textarea class="answer-area" id="ans-${q.id}" placeholder="Напиши свой ответ здесь — сохранится автоматически..." oninput="saveAnswer('${q.id}',this.value)">${saved}</textarea>
+      <div class="answer-footer">
+        <button class="save-answer-btn" onclick="confirmSaveAnswer('${q.id}')">Сохранить ответ</button>
+        <span class="answer-saved" id="saved-${q.id}">✓ Сохранено</span>
+        <button class="btn btn-ghost" style="font-size:10px;margin-left:auto" onclick="copyAnswer('${q.id}',this)">📋 Копировать</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveAnswer(id, val){
+  S.answers[id] = val;
+  save();
+  checkBadges();
+}
+function confirmSaveAnswer(id){
+  const s = document.getElementById('saved-'+id);
+  if(s){ s.style.display='inline'; setTimeout(()=>s.style.display='none',2000); }
+  addXP(15, 'ответ сохранён');
+}
+function copyAnswer(id, btn){
+  const t = S.answers[id]||'';
+  if(!t){ showNotif('Нет ответа для копирования'); return; }
+  navigator.clipboard.writeText(t).then(()=>{ btn.textContent='✓ Скопировано'; setTimeout(()=>btn.textContent='📋 Копировать',1500); });
+}
+
+// ─── RESUME ──────────────────────────────────────────────────────────────────
+function renderResume(){
+  const exp = document.getElementById('resume-experience');
+  const skills = document.getElementById('resume-skills');
+  const lines = S.achievements.map(a=>a.line).filter(Boolean);
+  exp.textContent = lines.length ? lines.join('\n') : 'Добавь достижения в разделе «Достижения» — они появятся здесь';
+  exp.style.color = lines.length ? 'var(--green)' : 'var(--muted)';
+  const doneSkills = S.plan.filter(p=>p.done).map(p=>p.skill);
+  skills.textContent = doneSkills.length ? doneSkills.join(' · ') : 'Выполни навыки в плане — они появятся здесь';
+  skills.style.color = doneSkills.length ? 'var(--green)' : 'var(--muted)';
+}
+
+function copyBlock(id, btn){
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.textContent).then(()=>{ btn.textContent='✓ Скопировано'; setTimeout(()=>btn.textContent='📋 Копировать',1500); });
+}
+
+// ─── HOME ────────────────────────────────────────────────────────────────────
+function renderHome(){
+  const pp = document.getElementById('home-progress');
+  const list = document.getElementById('skill-progress-list');
+  if(S.plan.length){
+    pp.style.display='block';
+    list.innerHTML = S.plan.map(p=>{
+      const pct = p.done?100:20;
+      return `<div class="skill-progress-item">
+        <div class="spi-name">${p.skill}</div>
+        <div class="spi-bar"><div class="spi-fill" style="width:${pct}%"></div></div>
+        <div class="spi-val">${pct}%</div>
+      </div>`;
+    }).join('');
+  }
+  const rc = document.getElementById('home-recent-card');
+  const rList = document.getElementById('home-recent');
+  if(S.achievements.length){
+    rc.style.display='block';
+    rList.innerHTML=S.achievements.slice(-3).reverse().map(a=>`
+      <div style="padding:10px 0;border-bottom:1px solid var(--b1);font-size:12px;color:var(--mid)">${a.line}</div>
+    `).join('');
+  }
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function showNotif(msg){
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2800);
+}
+
+// ─── TASK MAP DATA ───────────────────────────────────────────────────────────
+const TM_BLOCKS = [
+  {
+    id:'tmb1', num:'01', title:'Контент-стратегия и органический рост',
+    tasks:[
+      {
+        id:'tmt1_1', title:'Составить контент-план на 1 месяц',
+        tags:['go','hot'], time:'3–4 часа',
+        goal:'Создать документ с <strong>12–16 постами</strong> по всем каналам. Без плана контент хаотичен — это системная основа всего маркетинга.',
+        steps:[
+          {text:'Открой Notion или Google Sheets → создай таблицу: Дата / Канал / Тема / Формат / Статус / Ответственный'},
+          {text:'Распредели посты: LinkedIn (4 пост/мес), Facebook (4), VC.ru (2 статьи), Дзен (2), Telegram (4)'},
+          {text:'Придумай 3 контентные рубрики: боль клиента, как работает GRUZAPP, кейс реального пользователя'},
+          {text:'Для каждого поста напиши одно предложение — о чём он (тема, не текст)'},
+          {text:'Используй ChatGPT: «Придумай 12 тем постов для B2B маркетплейса грузоперевозок для малого бизнеса»'},
+          {text:'Согласуй план с командой, поставь дедлайны, назначь ответственных'},
+          {text:'После месяца — проанализируй что сработало, скорректируй план на следующий месяц'},
+        ],
+        tools:[
+          {icon:'📝',name:'Notion — шаблон контент-плана',desc:'Создай базу данных с фильтрами по каналу и статусу',url:'https://notion.so',type:'Инструмент'},
+          {icon:'📊',name:'Google Sheets',desc:'Простая таблица для контент-планирования',url:'https://sheets.google.com',type:'Инструмент'},
+          {icon:'🤖',name:'ChatGPT — генерация тем',desc:'Промпт: «12 тем постов для B2B сервиса [ниша]»',url:'https://chat.openai.com',type:'AI'},
+          {icon:'📅',name:'Buffer — отложенный постинг',desc:'Планируй публикации заранее во все соцсети',url:'https://buffer.com',type:'Сервис'},
+        ],
+        metrics:[
+          {id:'tm_m_posts_plan',name:'Постов в плане',ph:'например: 16'},
+          {id:'tm_m_channels',name:'Каналов охвачено',ph:'например: 5'},
+          {id:'tm_m_plan_months',name:'Месяцев план ведётся',ph:'например: 3'},
+        ],
+        xp:40,
+      },
+      {
+        id:'tmt1_2', title:'Написать и опубликовать 2 статьи на VC.ru',
+        tags:['go','res'], time:'2–3 часа на статью',
+        goal:'Опубликованные статьи = <strong>органический трафик + строчка в резюме с просмотрами</strong>. Статья на VC живёт годами.',
+        steps:[
+          {text:'Зарегистрируйся как автор: vc.ru/write → заполни профиль с аватаром и описанием'},
+          {text:'Выбери тему: «Как мы строим B2B маркетплейс грузоперевозок» или «5 ошибок при выборе перевозчика для бизнеса»'},
+          {text:'Напиши структуру: Заголовок (до 70 символов) + Лид (2 предложения с болью) + 4–5 блоков + Вывод + CTA'},
+          {text:'Используй ChatGPT для черновика: «Напиши статью для vc.ru: [тема], 1500 слов, аудитория — малый бизнес»'},
+          {text:'Добавь 1–2 реальных скриншота или схемы из GRUZAPP — это повышает доверие'},
+          {text:'Проверь текст в Главреде (glvrd.ru) — убери словесный мусор'},
+          {text:'Опубликуй и сразу поделись в своих соцсетях для первых просмотров'},
+          {text:'Через 7 дней — зафиксируй просмотры и реакции в метриках'},
+        ],
+        tools:[
+          {icon:'✍️',name:'VC.ru — публикация статей',desc:'Регистрация автора и публикация',url:'https://vc.ru/write',type:'Площадка'},
+          {icon:'🤖',name:'ChatGPT — написание черновика',desc:'Промпт: «Статья для VC.ru, тема: [X], 1500 слов»',url:'https://chat.openai.com',type:'AI'},
+          {icon:'🔤',name:'Главред — чистка текста',desc:'Убирает словесный мусор и стоп-слова',url:'https://glvrd.ru',type:'Инструмент'},
+          {icon:'🖼️',name:'Unsplash — бесплатные фото',desc:'Иллюстрации для статей без авторских прав',url:'https://unsplash.com',type:'Ресурс'},
+          {icon:'📊',name:'Canva — инфографика',desc:'Создай простые схемы для статьи',url:'https://canva.com',type:'Инструмент'},
+        ],
+        metrics:[
+          {id:'tm_m_vc_count',name:'Статей опубликовано',ph:'например: 2'},
+          {id:'tm_m_vc_views',name:'Просмотров (сумма)',ph:'например: 4200'},
+          {id:'tm_m_vc_reactions',name:'Реакций и комментариев',ph:'например: 18'},
+        ],
+        xp:60,
+      },
+      {
+        id:'tmt1_3', title:'Запустить соцсети GRUZAPP с нуля',
+        tags:['go','hot'], time:'5–8 часов на запуск',
+        goal:'<strong>LinkedIn + Facebook</strong> с единым визуальным стилем и первыми 10 постами. Соцсети — долгосрочный актив бренда.',
+        steps:[
+          {text:'LinkedIn: зайди на linkedin.com/company/setup/new → заполни логотип, описание (150 символов), сайт, специализацию'},
+          {text:'Facebook: создай бизнес-страницу → заполни раздел «О компании», добавь логотип и обложку'},
+          {text:'В Canva создай 3 шаблона постов под единый стиль: основной, цитата, кейс'},
+          {text:'Напиши 5 первых постов заранее (возьми из контент-плана)'},
+          {text:'Опубликуй приветственный пост с историей: «Зачем мы создали GRUZAPP»'},
+          {text:'Пригласи контакты подписаться — напрямую через LinkedIn'},
+          {text:'Настрой график: минимум 2 поста в неделю, лучше 3'},
+          {text:'Через 30 дней зафиксируй подписчиков и охват в метриках'},
+        ],
+        tools:[
+          {icon:'💼',name:'LinkedIn Company Page',desc:'Создание страницы компании',url:'https://www.linkedin.com/company/setup/new',type:'Площадка'},
+          {icon:'📘',name:'Facebook Business',desc:'Создание бизнес-страницы',url:'https://www.facebook.com/pages/create',type:'Площадка'},
+          {icon:'🎨',name:'Canva — шаблоны постов',desc:'Готовые шаблоны для соцсетей',url:'https://canva.com',type:'Дизайн'},
+          {icon:'📅',name:'Buffer — планировщик',desc:'Отложенный постинг в несколько соцсетей',url:'https://buffer.com',type:'Сервис'},
+        ],
+        metrics:[
+          {id:'tm_m_li_followers',name:'Подписчики LinkedIn',ph:'например: 240'},
+          {id:'tm_m_fb_followers',name:'Подписчики Facebook',ph:'например: 180'},
+          {id:'tm_m_posts_total',name:'Постов опубликовано всего',ph:'например: 32'},
+          {id:'tm_m_avg_reach',name:'Средний охват поста',ph:'например: 320'},
+        ],
+        xp:50,
+      },
+      {
+        id:'tmt1_4', title:'Снять и смонтировать видео о продукте (60–90 сек)',
+        tags:['go','ai'], time:'4–6 часов',
+        goal:'Видео = контент для всех каналов + кейс видеопродакшна в резюме. <strong>Видео с субтитрами увеличивает охват на 40%</strong>.',
+        steps:[
+          {text:'Напиши сценарий с помощью AI: «Сценарий видео 90 секунд о B2B сервисе грузоперевозок для ИП»'},
+          {text:'Структура: Проблема (15 сек) → Решение — GRUZAPP (30 сек) → Как работает, 3 шага (30 сек) → CTA (15 сек)'},
+          {text:'Запиши: скринкаст интерфейса + голосовой комментарий ИЛИ интервью с представителем компании'},
+          {text:'Смонтируй в CapCut (бесплатно, есть AI-монтаж) или DaVinci Resolve'},
+          {text:'Добавь субтитры — в CapCut это автоматически'},
+          {text:'Добавь логотип и CTA в конце: «Зарегистрируйся на gruzapp.ru»'},
+          {text:'Опубликуй на YouTube, LinkedIn, ВКонтакте, добавь описание с ключевыми словами'},
+          {text:'Через 14 дней зафиксируй просмотры'},
+        ],
+        tools:[
+          {icon:'🎬',name:'CapCut — монтаж (бесплатно)',desc:'Прост в освоении, есть автосубтитры',url:'https://www.capcut.com',type:'Инструмент'},
+          {icon:'🤖',name:'Claude/ChatGPT — сценарий',desc:'Промпт: «Сценарий видео 90 сек о [продукт]»',url:'https://claude.ai',type:'AI'},
+          {icon:'▶️',name:'YouTube Studio',desc:'Публикация и аналитика видео',url:'https://studio.youtube.com',type:'Площадка'},
+          {icon:'📝',name:'Descript — субтитры + монтаж',desc:'AI-транскрипция и редактирование текстом',url:'https://www.descript.com',type:'Инструмент'},
+        ],
+        metrics:[
+          {id:'tm_m_video_count',name:'Видео снято',ph:'например: 2'},
+          {id:'tm_m_video_views',name:'Просмотры видео',ph:'например: 1200'},
+          {id:'tm_m_video_watchtime',name:'Среднее время просмотра (сек)',ph:'например: 48'},
+        ],
+        xp:70,
+      },
+    ]
+  },
+  {
+    id:'tmb2', num:'02', title:'Performance-маркетинг и аналитика',
+    tasks:[
+      {
+        id:'tmt2_1', title:'Запустить кампанию в Яндекс Директ и оптимизировать',
+        tags:['go','hot'], time:'3–4 часа настройка + 1 час/нед оптимизация',
+        goal:'Работающая реклама с <strong>измеримой стоимостью лида (CPL)</strong>. Это ключевой инструмент performance-маркетолога.',
+        steps:[
+          {text:'Зарегистрируйся: direct.yandex.ru → создай аккаунт'},
+          {text:'Создай 2 отдельные кампании: для грузоотправителей и для перевозчиков (разные аудитории!)'},
+          {text:'Подбери ключевые слова в Wordstat: «найти перевозчика грузов», «маркетплейс грузоперевозок», «перевезти груз дёшево»'},
+          {text:'Напиши по 3 варианта объявлений на каждую группу — тестируй заголовки'},
+          {text:'Поставь UTM-метки: utm_source=yandex&utm_medium=cpc&utm_campaign=gruzapp_senders'},
+          {text:'Установи минимальный тестовый бюджет: 5 000–10 000 ₽'},
+          {text:'Каждую неделю: отключай ключи с CTR < 1%, усиливай объявления с CTR > 5%'},
+          {text:'Через 2 недели — зафиксируй CPL и количество лидов'},
+        ],
+        tools:[
+          {icon:'🎯',name:'Яндекс Директ',desc:'Запуск рекламных кампаний',url:'https://direct.yandex.ru',type:'Инструмент'},
+          {icon:'🔍',name:'Яндекс Wordstat',desc:'Подбор ключевых слов с частотностью',url:'https://wordstat.yandex.ru',type:'Аналитика'},
+          {icon:'🔗',name:'UTM Generator — utmgen.ru',desc:'Генератор UTM-меток за 30 секунд',url:'https://utmgen.ru',type:'Инструмент'},
+          {icon:'📖',name:'Учебник Яндекс Директ',desc:'Официальное обучение с нуля',url:'https://yandex.ru/adv/edu',type:'Обучение'},
+        ],
+        metrics:[
+          {id:'tm_m_ctr',name:'CTR объявлений (%)',ph:'например: 3.4'},
+          {id:'tm_m_cpl',name:'Стоимость лида CPL (₽)',ph:'например: 380'},
+          {id:'tm_m_leads',name:'Лидов получено всего',ph:'например: 52'},
+          {id:'tm_m_cpl_delta',name:'Снижение CPL от старта (%)',ph:'например: -28'},
+        ],
+        xp:80,
+      },
+      {
+        id:'tmt2_2', title:'Настроить UTM + AppMetrica + воронка конверсии',
+        tags:['go','res'], time:'2–3 часа',
+        goal:'<strong>Видеть откуда приходят пользователи и где они уходят</strong>. Без этого реклама — деньги в пустоту.',
+        steps:[
+          {text:'Установи AppMetrica SDK в приложение GRUZAPP или настрой web-аналитику'},
+          {text:'Создай UTM-шаблоны для каждого канала: VC, LinkedIn, Директ, Дзен, Telegram'},
+          {text:'Настрой цели в AppMetrica: регистрация, создание заявки, первый контакт с перевозчиком'},
+          {text:'Нарисуй воронку в Google Sheets: Визит → Регистрация → Заявка → Сделка'},
+          {text:'Считай конверсию на каждом этапе и фиксируй еженедельно'},
+          {text:'Создай простой дашборд в Google Looker Studio — бесплатно и красиво'},
+          {text:'Через месяц — определи слабое звено воронки и улучши его'},
+        ],
+        tools:[
+          {icon:'📊',name:'AppMetrica — мобильная аналитика',desc:'Бесплатная альтернатива Firebase от Яндекса',url:'https://appmetrica.yandex.ru',type:'Аналитика'},
+          {icon:'🔗',name:'UTM Generator',desc:'Создание размеченных ссылок',url:'https://utmgen.ru',type:'Инструмент'},
+          {icon:'📈',name:'Google Looker Studio',desc:'Бесплатные красивые дашборды',url:'https://lookerstudio.google.com',type:'Аналитика'},
+          {icon:'📋',name:'Google Analytics 4',desc:'Веб-аналитика если есть сайт',url:'https://analytics.google.com',type:'Аналитика'},
+        ],
+        metrics:[
+          {id:'tm_m_conv_visit_reg',name:'Конверсия визит→регистрация (%)',ph:'например: 4.2'},
+          {id:'tm_m_conv_reg_lead',name:'Конверсия регистрация→заявка (%)',ph:'например: 11'},
+          {id:'tm_m_utm_channels',name:'Каналов размечено UTM',ph:'например: 6'},
+        ],
+        xp:60,
+      },
+      {
+        id:'tmt2_3', title:'Еженедельный маркетинговый отчёт (4 недели подряд)',
+        tags:['res'], time:'1–2 часа в неделю',
+        goal:'4 отчёта подряд = <strong>динамика = доказательство результата</strong>. В резюме это становится «вёл регулярную аналитику».',
+        steps:[
+          {text:'Создай шаблон отчёта в Notion: Трафик / Реклама / Контент / Соцсети / Итоги / Следующие шаги'},
+          {text:'Каждый понедельник за 60 минут заполняй отчёт за прошлую неделю'},
+          {text:'Фиксируй аномалии: что выросло/упало и почему (гипотеза)'},
+          {text:'После 4 недель сделай сводный отчёт с динамикой по всем метрикам'},
+          {text:'Присылай отчёт команде/заказчику GRUZAPP — это покажет твою системность'},
+        ],
+        tools:[
+          {icon:'📝',name:'Notion — шаблон отчёта',desc:'Создай шаблон один раз, заполняй каждую неделю',url:'https://notion.so',type:'Инструмент'},
+          {icon:'📊',name:'Google Sheets',desc:'Таблица с историей метрик по неделям',url:'https://sheets.google.com',type:'Инструмент'},
+        ],
+        metrics:[
+          {id:'tm_m_reports_count',name:'Отчётов составлено',ph:'например: 8'},
+          {id:'tm_m_traffic_growth',name:'Рост трафика за период (%)',ph:'например: +41'},
+        ],
+        xp:50,
+      },
+    ]
+  },
+  {
+    id:'tmb3', num:'03', title:'Продукт, CJM и документация',
+    tasks:[
+      {
+        id:'tmt3_1', title:'Нарисовать Customer Journey Map (CJM)',
+        tags:['go','res'], time:'3–4 часа',
+        goal:'CJM — <strong>артефакт в портфолио</strong> + понимание где и почему теряются пользователи.',
+        steps:[
+          {text:'Открой Miro → New Board → Customer Journey Map template (есть готовый)'},
+          {text:'Опиши 2 персонажа: Грузоотправитель (малый бизнес, ИП) и Перевозчик (частник)'},
+          {text:'Для каждого пропиши 6–7 этапов: Осознание боли → Поиск → Знакомство с GRUZAPP → Регистрация → Первая заявка → Сделка → Возврат'},
+          {text:'На каждом этапе укажи: Что делает пользователь / Где контактирует / Какая боль / Какая эмоция (1–5)'},
+          {text:'Отметь красным критические точки — где пользователь может уйти навсегда'},
+          {text:'Сохрани как PNG → вставь в Notion как страницу портфолио'},
+          {text:'Предложи команде 2–3 конкретных улучшения на основе CJM'},
+        ],
+        tools:[
+          {icon:'🗺️',name:'Miro — CJM шаблон',desc:'Готовый шаблон Customer Journey Map',url:'https://miro.com/templates/customer-journey-map/',type:'Инструмент'},
+          {icon:'🎨',name:'FigJam — альтернатива',desc:'Онлайн-доска от Figma, удобная для схем',url:'https://www.figma.com/figjam/',type:'Инструмент'},
+          {icon:'📖',name:'Гайд по CJM на русском',desc:'Как создать карту пути пользователя',url:'https://practicum.yandex.ru/blog/customer-journey-map/',type:'Обучение'},
+        ],
+        metrics:[
+          {id:'tm_m_cjm_done',name:'CJM создан (да=1)',ph:'1'},
+          {id:'tm_m_pain_points',name:'Критических точек потерь',ph:'например: 4'},
+          {id:'tm_m_cjm_improvements',name:'Предложений по улучшению',ph:'например: 3'},
+        ],
+        xp:60,
+      },
+      {
+        id:'tmt3_2', title:'Провести 3 пользовательских интервью',
+        tags:['go'], time:'1 час на интервью + 30 мин оформление',
+        goal:'<strong>Реальные инсайты от пользователей</strong> = основа для правильных продуктовых решений.',
+        steps:[
+          {text:'Составь 8–10 вопросов: «Как сейчас ищешь перевозчика?», «Что раздражает больше всего?», «Как узнал о GRUZAPP?»'},
+          {text:'Найди 3 респондентов: текущие пользователи GRUZAPP, знакомые ИП, предприниматели из Telegram-групп'},
+          {text:'Проведи созвон 30–45 минут, включи запись (с согласия) через Otter.ai'},
+          {text:'После каждого интервью: выпиши 5 ключевых цитат и инсайтов'},
+          {text:'Сведи инсайты в таблицу: Боль / Цитата / Частота (сколько раз упомянули)'},
+          {text:'Найди топ-3 боли общие для всех респондентов'},
+          {text:'Оформи 1-страничный документ и добавь в базу знаний'},
+        ],
+        tools:[
+          {icon:'🎥',name:'Zoom — созвон',desc:'Запись интервью, бесплатно до 40 мин',url:'https://zoom.us',type:'Инструмент'},
+          {icon:'🎙️',name:'Otter.ai — транскрипция',desc:'AI-транскрипция записи разговора',url:'https://otter.ai',type:'AI'},
+          {icon:'📝',name:'Notion — оформление',desc:'Шаблон для фиксации инсайтов',url:'https://notion.so',type:'Инструмент'},
+          {icon:'📖',name:'Гайд по интервью — JTBD',desc:'Методология проведения интервью',url:'https://jtbd.info/2-what-is-jobs-to-be-done-jtbd-796b82081cca',type:'Обучение'},
+        ],
+        metrics:[
+          {id:'tm_m_interviews',name:'Интервью проведено',ph:'например: 3'},
+          {id:'tm_m_insights',name:'Ключевых инсайтов',ph:'например: 14'},
+          {id:'tm_m_top_pains',name:'Топ-болей выявлено',ph:'например: 3'},
+        ],
+        xp:70,
+      },
+      {
+        id:'tmt3_3', title:'Создать базу знаний в Notion',
+        tags:['go'], time:'4–6 часов создание, 30 мин/нед обновление',
+        goal:'<strong>Структурированная wiki</strong> = системное мышление + артефакт для портфолио.',
+        steps:[
+          {text:'Создай workspace в Notion, пригласи команду'},
+          {text:'Создай структуру: 1.О продукте / 2.Маркетинговая стратегия / 3.Контент (план, шаблоны) / 4.Аналитика / 5.Конкуренты / 6.Процессы / 7.Встречи'},
+          {text:'Заполни раздел «О продукте»: описание, ЦА, позиционирование, ценностное предложение'},
+          {text:'Добавь маркетинговый гайдлайн: тон голоса, цвета бренда, правила публикаций'},
+          {text:'Создай шаблоны для частых задач: пост в LinkedIn, статья на VC, технический бриф'},
+          {text:'Обновляй wiki после каждого спринта или встречи с командой'},
+        ],
+        tools:[
+          {icon:'📝',name:'Notion — основная платформа',desc:'Workspace для базы знаний',url:'https://notion.so',type:'Инструмент'},
+          {icon:'📚',name:'Шаблоны Notion для маркетинга',desc:'Готовые шаблоны для маркетинговых команд',url:'https://www.notion.so/templates/category/marketing',type:'Ресурс'},
+        ],
+        metrics:[
+          {id:'tm_m_wiki_pages',name:'Страниц в базе знаний',ph:'например: 22'},
+          {id:'tm_m_wiki_weeks',name:'Недель подряд обновляется',ph:'например: 6'},
+        ],
+        xp:50,
+      },
+      {
+        id:'tmt3_4', title:'Конкурентный анализ: GRUZAPP vs ATI и другие',
+        tags:['go','res'], time:'3–4 часа',
+        goal:'Документ с анализом конкурентов = <strong>стратегия позиционирования + кейс для портфолио</strong>.',
+        steps:[
+          {text:'Составь список конкурентов: ATI.SU, Груз.ру, Deliver, Cargo, ТК Деловые линии'},
+          {text:'Создай таблицу по критериям: ЦА / UX регистрации / Функции / Цена / SEO / Соцсети / Слабые места'},
+          {text:'Изучи каждый сайт глубоко: пройди путь пользователя, зарегистрируйся'},
+          {text:'Используй SimilarWeb для оценки трафика и источников'},
+          {text:'Изучи отзывы на каждую платформу в App Store, Google Play, отзовиках'},
+          {text:'Найди 3+ незакрытые ниши или боли, которые не решают конкуренты'},
+          {text:'Сформулируй 3 точки дифференциации GRUZAPP и запиши в базу знаний'},
+        ],
+        tools:[
+          {icon:'📊',name:'SimilarWeb — анализ трафика',desc:'Трафик, источники, конкуренты',url:'https://similarweb.com',type:'Аналитика'},
+          {icon:'🔍',name:'ATI.SU — главный конкурент',desc:'Изучи как эталон рынка',url:'https://ati.su',type:'Конкурент'},
+          {icon:'⭐',name:'Отзывы — irecommend.ru',desc:'Реальные отзывы пользователей конкурентов',url:'https://irecommend.ru',type:'Ресурс'},
+          {icon:'📋',name:'Google Sheets — таблица',desc:'Сравнительная таблица конкурентов',url:'https://sheets.google.com',type:'Инструмент'},
+        ],
+        metrics:[
+          {id:'tm_m_competitors',name:'Конкурентов проанализировано',ph:'например: 5'},
+          {id:'tm_m_diff_points',name:'Точек дифференциации',ph:'например: 4'},
+          {id:'tm_m_gaps_found',name:'Рыночных пробелов найдено',ph:'например: 3'},
+        ],
+        xp:60,
+      },
+    ]
+  },
+  {
+    id:'tmb4', num:'04', title:'Спецпроекты и инфлюенс-маркетинг',
+    tasks:[
+      {
+        id:'tmt4_1', title:'Разработать концепции 2 спецпроектов',
+        tags:['go'], time:'2–3 часа',
+        goal:'Описанные концепции — это <strong>кейсы мышления для портфолио</strong> даже без реализации.',
+        steps:[
+          {text:'Спецпроект 1 (онлайн): «Марафон для перевозчиков» — серия из 7 постов с советами + розыгрыш подписки'},
+          {text:'Спецпроект 2 (партнёрский): Коллаборация с Telegram-каналом о логистике — гостевая статья + упоминание'},
+          {text:'Для каждого опиши по шаблону: Идея / Цель / Аудитория / Механика / Бюджет / KPI / Сроки'},
+          {text:'Используй ChatGPT: «Придумай 5 спецпроектов для B2B маркетплейса грузоперевозок, бюджет до 50 000 ₽»'},
+          {text:'Выбери 1 реалистичный → реализуй полностью'},
+          {text:'Зафиксируй результаты в достижениях'},
+        ],
+        tools:[
+          {icon:'🤖',name:'ChatGPT — генерация идей',desc:'Промпт: «5 спецпроектов для [бренд], бюджет [X]»',url:'https://chat.openai.com',type:'AI'},
+          {icon:'📝',name:'Notion — шаблон бриф-документа',desc:'Оформление концепции проекта',url:'https://notion.so',type:'Инструмент'},
+        ],
+        metrics:[
+          {id:'tm_m_projects_desc',name:'Концепций описано',ph:'например: 2'},
+          {id:'tm_m_projects_done',name:'Проектов реализовано',ph:'например: 1'},
+          {id:'tm_m_project_reach',name:'Охват реализованного проекта',ph:'например: 8400'},
+        ],
+        xp:70,
+      },
+      {
+        id:'tmt4_2', title:'Найти блогеров и договориться о размещениях',
+        tags:['go','hot'], time:'3–4 часа поиск + переговоры',
+        goal:'Реальный опыт работы с инфлюенсерами = <strong>закрытие ключевого требования вакансий</strong> Head of Content.',
+        steps:[
+          {text:'Ищи в TGStat: категории «Логистика», «Малый бизнес», «ИП и самозанятые» — фильтруй по ER > 5%'},
+          {text:'Критерии отбора: 1 000–50 000 подписчиков, активная аудитория, тематика совпадает'},
+          {text:'Напиши персонализированное сообщение: «Привет! Я маркетолог GRUZAPP — сервиса для поиска перевозчиков. Вижу, что твоя аудитория — предприниматели. Предлагаю коллаборацию...»'},
+          {text:'Отправь минимум 15 сообщений чтобы получить 3–5 ответов'},
+          {text:'Согласуй формат: нативный пост, упоминание в подборке, совместный контент'},
+          {text:'Сопроводи размещение: проверь текст, отследи переходы по UTM, собери статистику через 48 часов'},
+          {text:'Зафиксируй в таблице: канал / подписчики / охват / переходы / конверсии / стоимость'},
+        ],
+        tools:[
+          {icon:'📡',name:'TGStat — поиск Telegram-каналов',desc:'Каталог каналов с аналитикой',url:'https://tgstat.ru',type:'Аналитика'},
+          {icon:'📊',name:'Telemetr — аналитика каналов',desc:'Проверка роста и накруток',url:'https://telemetr.io',type:'Аналитика'},
+          {icon:'📋',name:'Google Sheets — таблица блогеров',desc:'CRM для работы с инфлюенсерами',url:'https://sheets.google.com',type:'Инструмент'},
+        ],
+        metrics:[
+          {id:'tm_m_bloggers_dm',name:'Написано блогеров',ph:'например: 18'},
+          {id:'tm_m_bloggers_agreed',name:'Договорились',ph:'например: 4'},
+          {id:'tm_m_influencer_reach',name:'Суммарный охват (чел.)',ph:'например: 32000'},
+          {id:'tm_m_influencer_clicks',name:'Переходов с размещений',ph:'например: 280'},
+        ],
+        xp:90,
+      },
+    ]
+  },
+  {
+    id:'tmb5', num:'05', title:'AI-инструменты и автоматизация',
+    tasks:[
+      {
+        id:'tmt5_1', title:'Автоматизировать маркетинговые задачи с AI',
+        tags:['ai','go'], time:'2–3 часа настройка',
+        goal:'<strong>AI-воркфлоу экономит 5–10 часов в неделю</strong> и делает тебя в 3 раза продуктивнее конкурентов.',
+        steps:[
+          {text:'Создай «библиотеку промптов» в Notion: напиши шаблонные промпты для 10 регулярных задач'},
+          {text:'Промпты для маркетинга: пост в LinkedIn / статья на VC / анализ конкурента / ответ на комментарий'},
+          {text:'Протестируй связку: Промпт → Claude/ChatGPT → Canva → публикация'},
+          {text:'Замерь время: сколько занимала задача до AI и после. Зафиксируй разницу'},
+          {text:'Настрой Make.com для автоматизации: например, новый пост в Notion → автоматически публикуется в Telegram'},
+          {text:'Создай в Canva шаблоны на основе AI-контента — контент за 20 минут вместо 2 часов'},
+        ],
+        tools:[
+          {icon:'🧠',name:'Claude AI — лучший для текстов',desc:'Особенно хорош для длинных материалов',url:'https://claude.ai',type:'AI'},
+          {icon:'🤖',name:'ChatGPT',desc:'Универсальный AI-ассистент',url:'https://chat.openai.com',type:'AI'},
+          {icon:'🎨',name:'Midjourney — визуалы',desc:'Генерация изображений для постов',url:'https://midjourney.com',type:'AI'},
+          {icon:'⚙️',name:'Make.com — автоматизация',desc:'Связывает сервисы без кода',url:'https://make.com',type:'Автоматизация'},
+          {icon:'📖',name:'Promptingguide.ai (RU)',desc:'Как писать эффективные промпты',url:'https://www.promptingguide.ai/ru',type:'Обучение'},
+        ],
+        metrics:[
+          {id:'tm_m_ai_time_saved',name:'Часов сэкономлено/нед через AI',ph:'например: 7'},
+          {id:'tm_m_ai_prompts',name:'Промптов в библиотеке',ph:'например: 18'},
+          {id:'tm_m_ai_automations',name:'Автоматизаций настроено',ph:'например: 3'},
+        ],
+        xp:80,
+      },
+      {
+        id:'tmt5_2', title:'Провести обучение по AI для коллег (1–2 сессии)',
+        tags:['ai','res'], time:'2 часа подготовка + 1 час сессия',
+        goal:'<strong>«Обучил команду AI-инструментам»</strong> — это сильная строка в резюме и реальная ценность для работодателя.',
+        steps:[
+          {text:'Составь программу 60 минут: Что такое AI для маркетинга (10 мин) + Промпт-инжиниринг (20 мин) + Практика вместе (25 мин) + Q&A (5 мин)'},
+          {text:'Подготовь 5 реальных примеров из задач GRUZAPP — не абстрактных'},
+          {text:'Создай презентацию в Canva: 10–12 слайдов, конкретные кейсы'},
+          {text:'Проведи созвон через Zoom или живую встречу'},
+          {text:'Собери обратную связь: «Что было полезно?», «Что применишь уже сегодня?»'},
+          {text:'Зафиксируй количество участников для резюме'},
+        ],
+        tools:[
+          {icon:'🎥',name:'Zoom — онлайн-встреча',desc:'Запись сессии для тех кто не смог',url:'https://zoom.us',type:'Инструмент'},
+          {icon:'🎨',name:'Canva — презентация',desc:'Быстро сделать красивые слайды',url:'https://canva.com',type:'Инструмент'},
+        ],
+        metrics:[
+          {id:'tm_m_train_sessions',name:'Сессий проведено',ph:'например: 2'},
+          {id:'tm_m_train_people',name:'Людей обучено',ph:'например: 7'},
+          {id:'tm_m_train_nps',name:'Оценка полезности (1–10)',ph:'например: 9'},
+        ],
+        xp:60,
+      },
+    ]
+  },
+];
+
+// ─── TASK MAP STATE ───────────────────────────────────────────────────────────
+// Store in main S object
+if(!S.tmDone) S.tmDone = {};
+if(!S.tmNotes) S.tmNotes = {};
+if(!S.tmMetrics) S.tmMetrics = {};
+let tmCurrentFilter = 'all';
+
+function tmFilter(f, btn){
+  tmCurrentFilter = f;
+  document.querySelectorAll('.tm-filter').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTaskMap();
+}
+
+function renderTaskMap(){
+  const el = document.getElementById('tm-blocks');
+  if(!el) return;
+  let totalTasks = 0, doneTasks = 0;
+  TM_BLOCKS.forEach(b=>{ b.tasks.forEach(t=>{ totalTasks++; if(S.tmDone[t.id]) doneTasks++; }); });
+  document.getElementById('tm-done-count').textContent = doneTasks;
+  document.getElementById('tm-total-count').textContent = totalTasks;
+
+  el.innerHTML = TM_BLOCKS.map(b=>{
+    const bDone = b.tasks.filter(t=>S.tmDone[t.id]).length;
+    const bPct = Math.round(bDone/b.tasks.length*100);
+    const visibleTasks = b.tasks.filter(t=>{
+      if(tmCurrentFilter==='done') return S.tmDone[t.id];
+      if(tmCurrentFilter==='active') return !S.tmDone[t.id];
+      return true;
+    });
+    if(!visibleTasks.length) return '';
+    return `<div class="tm-block" id="tmblock-${b.id}">
+      <div class="tm-block-header" onclick="tmToggleBlock('${b.id}')">
+        <div class="tm-block-num">${b.num}</div>
+        <div style="flex:1">
+          <div class="tm-block-title">${b.title}</div>
+          <div class="tm-pbar"><div class="tm-pbar-fill" style="width:${bPct}%"></div></div>
+        </div>
+        <div class="tm-block-prog"><b>${bDone}</b>/${b.tasks.length}</div>
+        <div class="tm-chevron">▾</div>
+      </div>
+      <div class="tm-block-body" id="tmbody-${b.id}">
+        ${visibleTasks.map(t=>renderTmTask(t)).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTmTask(t){
+  const isDone = S.tmDone[t.id];
+  const notes = S.tmNotes[t.id] || [];
+  const tagMap = {go:'🎯 Действие',res:'📊 Результат',hot:'🔴 Срочно',ai:'🤖 AI'};
+  const tagClass = {go:'tmt-go',res:'tmt-res',hot:'tmt-hot',ai:'tmt-ai'};
+  const tags = t.tags.map(tg=>`<span class="tm-tag ${tagClass[tg]||''}">${tagMap[tg]||tg}</span>`).join('');
+
+  const stepsHtml = t.steps.map((s,i)=>`
+    <li>
+      <span class="tm-step-n">${i+1}.</span>
+      <span class="tm-step-text">${s.text}</span>
+      <button class="tm-step-copy" onclick="tmCopyStep(this,'${escJS(s.text)}')">копировать</button>
+    </li>`).join('');
+
+  const toolsHtml = t.tools.map(tl=>`
+    <a href="${tl.url}" target="_blank" class="tm-tool">
+      <span class="tm-tool-icon">${tl.icon}</span>
+      <div class="tm-tool-info">
+        <div class="tm-tool-name">${tl.name}</div>
+        <div class="tm-tool-desc">${tl.desc}</div>
+      </div>
+      <span class="tm-tool-type">${tl.type}</span>
+    </a>`).join('');
+
+  const metricsHtml = t.metrics.map(m=>{
+    const val = S.tmMetrics[m.id]||'';
+    return `<div class="tm-metric ${val?'filled':''}" onclick="tmEditMetric('${m.id}','${escJS(m.name)}','${escJS(m.ph)}',this)">
+      <div class="tm-metric-name">${m.name}</div>
+      <div class="tm-metric-val" id="tmv-${m.id}">${val||`<span style="color:var(--muted);font-size:10px">нажми → добавить</span>`}</div>
+    </div>`;
+  }).join('');
+
+  const logsHtml = notes.length
+    ? notes.map(n=>`
+      <div class="tm-log-entry" id="tml-${n.id}">
+        <div class="tm-log-date">${n.date}</div>
+        <div class="tm-log-text">${escHtml(n.text)}</div>
+        <div class="tm-log-actions">
+          <button class="tm-log-copy" onclick="tmCopyNote('${escJS(n.text)}',this)">📋 копировать</button>
+        </div>
+        <button class="tm-log-del" onclick="tmDelNote('${t.id}','${n.id}')">✕</button>
+      </div>`).join('')
+    : `<div style="font-size:11px;color:var(--muted);padding:4px 0">Пока нет записей</div>`;
+
+  return `<div class="tm-task ${isDone?'done':''}" id="tmt-${t.id}">
+    <div class="tm-task-head" onclick="tmToggleTask('${t.id}')">
+      <div class="tm-chk" onclick="tmToggleDone(event,'${t.id}')"><span class="tm-chk-icon">✓</span></div>
+      <div class="tm-task-info">
+        <div class="tm-task-title">${t.title}</div>
+        <div class="tm-task-tags">${tags}<span class="tm-tag" style="background:rgba(255,159,62,.08);color:var(--orange)">⏱ ${t.time}</span>${notes.length?`<span class="tm-tag" style="background:rgba(77,159,255,.08);color:var(--blue)">💬 ${notes.length}</span>`:''}</div>
+      </div>
+      <div class="tm-expand">▾</div>
+    </div>
+    <div class="tm-body">
+      <div class="tm-section">
+        <div class="tm-sec-label">🎯 ЦЕЛЬ ЗАДАЧИ</div>
+        <div class="tm-goal-text">${t.goal}</div>
+      </div>
+      <div class="tm-section">
+        <div class="tm-sec-label">📋 ПОШАГОВЫЙ ПЛАН</div>
+        <ul class="tm-steps">${stepsHtml}</ul>
+      </div>
+      <div class="tm-section">
+        <div class="tm-sec-label">🔧 ИНСТРУМЕНТЫ И РЕСУРСЫ</div>
+        <div class="tm-tools-list">${toolsHtml}</div>
+      </div>
+      <div class="tm-section">
+        <div class="tm-sec-label">📊 МЕТРИКИ ДЛЯ РЕЗЮМЕ <span style="font-size:9px;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">— нажми на ячейку чтобы добавить</span></div>
+        <div class="tm-metrics">${metricsHtml}</div>
+      </div>
+      <div class="tm-section" style="padding-bottom:0">
+        <div class="tm-sec-label" style="padding-left:0;margin-bottom:8px">📝 ОТЧЁТЫ И ЗАМЕТКИ</div>
+        <div class="tm-log" id="tmlog-${t.id}">${logsHtml}</div>
+        <textarea class="tm-note-area" id="tminput-${t.id}" placeholder="Что сделал, что получилось, цифры, проблемы, идеи..."></textarea>
+        <div class="tm-note-toolbar">
+          <button class="tm-save-btn" onclick="tmSaveNote('${t.id}')">💾 Сохранить</button>
+          <button class="tm-copy-all" onclick="tmCopyAllNotes('${t.id}',this)">📋 Копировать все записи</button>
+          <span class="tm-save-status" id="tmss-${t.id}">Сохранено ✓</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function tmToggleBlock(id){
+  document.getElementById('tmblock-'+id).classList.toggle('collapsed');
+}
+function tmToggleTask(id){
+  document.getElementById('tmt-'+id).classList.toggle('open');
+}
+function tmToggleDone(e, id){
+  e.stopPropagation();
+  S.tmDone[id] = !S.tmDone[id];
+  save();
+  const el = document.getElementById('tmt-'+id);
+  if(el){ if(S.tmDone[id]) el.classList.add('done'); else el.classList.remove('done'); }
+  const task = TM_BLOCKS.flatMap(b=>b.tasks).find(t=>t.id===id);
+  if(S.tmDone[id] && task) addXP(task.xp||40, `«${task.title.slice(0,30)}...» выполнено`);
+  // update count
+  const allTasks = TM_BLOCKS.flatMap(b=>b.tasks);
+  const doneCount = allTasks.filter(t=>S.tmDone[t.id]).length;
+  const dc = document.getElementById('tm-done-count');
+  if(dc) dc.textContent = doneCount;
+  checkBadges();
+}
+function tmSaveNote(tid){
+  const input = document.getElementById('tminput-'+tid);
+  const text = input.value.trim();
+  if(!text){ showNotif('Напиши заметку перед сохранением'); return; }
+  if(!S.tmNotes[tid]) S.tmNotes[tid] = [];
+  const n = {id:Date.now().toString(), date:new Date().toLocaleString('ru'), text};
+  S.tmNotes[tid].unshift(n);
+  save();
+  input.value = '';
+  const logEl = document.getElementById('tmlog-'+tid);
+  if(logEl){
+    const entry = document.createElement('div');
+    entry.className='tm-log-entry'; entry.id='tml-'+n.id;
+    entry.innerHTML=`<div class="tm-log-date">${n.date}</div><div class="tm-log-text">${escHtml(n.text)}</div><div class="tm-log-actions"><button class="tm-log-copy" onclick="tmCopyNote('${escJS(n.text)}',this)">📋 копировать</button></div><button class="tm-log-del" onclick="tmDelNote('${tid}','${n.id}')">✕</button>`;
+    if(logEl.querySelector('[style*="Пока нет"]')) logEl.innerHTML='';
+    logEl.insertBefore(entry, logEl.firstChild);
+  }
+  const ss = document.getElementById('tmss-'+tid);
+  if(ss){ ss.classList.add('show'); setTimeout(()=>ss.classList.remove('show'),2000); }
+  addXP(10, 'заметка сохранена');
+}
+function tmDelNote(tid, nid){
+  if(!S.tmNotes[tid]) return;
+  S.tmNotes[tid] = S.tmNotes[tid].filter(n=>n.id!==nid);
+  save();
+  const el = document.getElementById('tml-'+nid);
+  if(el) el.remove();
+}
+function tmEditMetric(id, name, ph, box){
+  const cur = S.tmMetrics[id]||'';
+  const val = prompt(`${name}\n(например: ${ph})`, cur);
+  if(val===null) return;
+  S.tmMetrics[id] = val;
+  save();
+  const disp = document.getElementById('tmv-'+id);
+  if(disp){ disp.innerHTML = val||`<span style="color:var(--muted);font-size:10px">нажми → добавить</span>`; }
+  if(val) box.classList.add('filled'); else box.classList.remove('filled');
+  addXP(5,'метрика зафиксирована');
+}
+function tmCopyStep(btn, text){
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='✓'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='копировать'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+function tmCopyNote(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='✓ скопировано';
+    setTimeout(()=>btn.textContent='📋 копировать',1500);
+  });
+}
+function tmCopyAllNotes(tid, btn){
+  const notes = S.tmNotes[tid]||[];
+  if(!notes.length){ showNotif('Нет записей для копирования'); return; }
+  const text = notes.map(n=>`[${n.date}]\n${n.text}`).join('\n\n---\n\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='✓ Скопировано!';
+    setTimeout(()=>btn.textContent='📋 Копировать все записи',1600);
+  });
+}
+function escJS(s){ return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n'); }
+
+load();
+// Ensure task map state exists after load
+if(!S.tmDone) S.tmDone={};
+if(!S.tmNotes) S.tmNotes={};
+if(!S.tmMetrics) S.tmMetrics={};
+// Update nav titles
+const NAV_TITLES = {home:'Дашборд',analyzer:'AI Анализ гэпов',plan:'Мой план',taskmap:'Карта заданий',achievements:'Достижения',interview:'Подготовка к интервью',resume:'Резюме-конструктор'};
+const _origNav = nav;
+// Patch nav to handle taskmap
+const nav_orig = nav;
+function nav(id, el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const view = document.getElementById('view-'+id);
+  if(view) view.classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('tb-title').textContent=NAV_TITLES[id]||id;
+  if(id==='plan') renderPlan();
+  if(id==='achievements') renderAchievements();
+  if(id==='interview') renderInterview();
+  if(id==='resume') renderResume();
+  if(id==='home') renderHome();
+  if(id==='taskmap') renderTaskMap();
+}
+updateXPUI();
+updatePlanBadge();
+renderBadges();
+renderHome();
+document.getElementById('s-skills').textContent=S.plan.filter(p=>p.done).length;
+document.getElementById('s-plan').textContent=S.plan.length;
+document.getElementById('s-achieve').textContent=S.achievements.length;
+</script>
+</body>
+</html>
