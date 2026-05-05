@@ -4,7 +4,16 @@ import './styles.css';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://proydwxsyvlvzyujzgbo.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_CbRALM-P47WGnIiEFNqqWA_NOc7EkDT';
 const AI_PROXY_FUNCTION = import.meta.env.VITE_AI_PROXY_FUNCTION || 'ai-proxy';
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    // Отключаем Web Locks API: он вызывает "lock was released because another request stole it"
+    // когда несколько запросов идут параллельно или вкладок открыто несколько.
+    lock: async (_name, _acquireTimeout, fn) => fn(),
+  },
+});
 const STORAGE_KEY = 'careerpath_state_v2';
 const BADGES_KEY = 'careerpath_badges_v2';
 
@@ -106,15 +115,48 @@ function projectName() {
 }
 
 async function callAI(task, input) {
-  const { data: sessionData } = await sb.auth.getSession();
-  const token = sessionData?.session?.access_token;
+  console.log('[callAI] start', task);
+
+  // Получаем активную сессию. Если её нет — пробуем восстановить.
+  let { data: sessionData } = await sb.auth.getSession();
+  let token = sessionData?.session?.access_token;
+
+  if (!token) {
+    console.log('[callAI] no session, refreshing...');
+    const { data: refreshed } = await sb.auth.refreshSession();
+    token = refreshed?.session?.access_token;
+  }
+
   if (!token) throw new Error('Нет активной сессии. Войди снова.');
-  const { data, error } = await sb.functions.invoke(AI_PROXY_FUNCTION, {
-    body: { task, input },
-    headers: { Authorization: `Bearer ${token}` }
+
+  console.log('[callAI] invoking edge function...');
+
+  // Делаем прямой fetch вместо sb.functions.invoke, потому что invoke внутри
+  // тоже трогает auth lock и может падать на той же ошибке параллельных запросов.
+  const url = `${SUPABASE_URL}/functions/v1/${AI_PROXY_FUNCTION}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ task, input }),
   });
-  if (error) throw new Error(error.message || 'Ошибка AI-прокси');
+
+  console.log('[callAI] response status', res.status);
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Сервер вернул не-JSON ответ (статус ${res.status})`);
+  }
+
+  if (!res.ok) throw new Error(data?.error || `Edge Function вернула ошибку ${res.status}`);
   if (data?.error) throw new Error(data.error);
+
+  console.log('[callAI] success');
   return data;
 }
 
@@ -400,7 +442,7 @@ async function runAnalysis() {
     renderPlan(); renderTaskMap(); renderInterview(); renderHome();
     addXP(80, 'AI-анализ завершён');
   } catch (e) {
-    showError(results, `AI не сработал: ${e.message}\n\nПроверь: Supabase function deployed, ANTHROPIC_API_KEY добавлен в secrets, JWT включён.`);
+    showError(results, `AI не сработал: ${e.message}\n\nПроверь: Edge Function задеплоена, OPENROUTER_API_KEY добавлен в Supabase secrets, баланс OpenRouter не нулевой.`);
   } finally {
     clearInterval(interval); btn.disabled = false; loading.classList.remove('show'); results.classList.add('show');
   }
