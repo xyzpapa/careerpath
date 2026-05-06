@@ -2,15 +2,16 @@ import { createClient } from '@supabase/supabase-js';
 import './styles.css';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://proydwxsyvlvzyujzgbo.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_CbRALM-P47WGnIiEFNqqWA_NOc7EkDT';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb3lkd3hzeXZsdnp5dWp6Z2JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxNDUsImV4cCI6MjA5MTE1MjE0NX0.pxRuBIyK2CpVVAzT60eCQ_fKxjZepGpX8rd01eE3mc4';
 const AI_PROXY_FUNCTION = import.meta.env.VITE_AI_PROXY_FUNCTION || 'ai-proxy';
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true,
+    // Отключаем автоматический refresh: он уходил в бесконечный цикл при гонке.
+    // Если токен протух — пользователь просто перелогинится.
+    autoRefreshToken: false,
     detectSessionInUrl: true,
-    // Отключаем Web Locks API: он вызывает "lock was released because another request stole it"
-    // когда несколько запросов идут параллельно или вкладок открыто несколько.
+    // Отключаем Web Locks API: вызывает "lock was released because another request stole it".
     lock: async (_name, _acquireTimeout, fn) => fn(),
   },
 });
@@ -114,25 +115,49 @@ function projectName() {
   return S.profile.project || 'твой проект';
 }
 
+function getAccessTokenSync() {
+  // Supabase хранит сессию в localStorage под ключом sb-{project-ref}-auth-token.
+  // Берём её напрямую, чтобы не дёргать sb.auth.getSession() — он может уходить в зависание.
+  try {
+    const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+    const key = `sb-${projectRef}-auth-token`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token || parsed?.currentSession?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 async function callAI(task, input) {
   console.log('[callAI] start', task);
 
-  // Получаем активную сессию. Если её нет — пробуем восстановить.
-  let { data: sessionData } = await sb.auth.getSession();
-  let token = sessionData?.session?.access_token;
+  // Берём токен из localStorage напрямую — sb.auth.getSession() зависает
+  let token = getAccessTokenSync();
 
+  // Если токена нет — пробуем через sb.auth как запасной вариант (с таймаутом)
   if (!token) {
-    console.log('[callAI] no session, refreshing...');
-    const { data: refreshed } = await sb.auth.refreshSession();
-    token = refreshed?.session?.access_token;
+    console.log('[callAI] no token in localStorage, trying sb.auth...');
+    try {
+      const result = await Promise.race([
+        sb.auth.getSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
+      ]);
+      token = result?.data?.session?.access_token;
+    } catch (e) {
+      console.warn('[callAI] sb.auth failed:', e.message);
+    }
   }
 
-  if (!token) throw new Error('Нет активной сессии. Войди снова.');
+  // Если всё равно нет токена — используем anon key (для публичных функций)
+  if (!token) {
+    console.warn('[callAI] no session token, using anon key');
+    token = SUPABASE_ANON_KEY;
+  }
 
-  console.log('[callAI] invoking edge function...');
+  console.log('[callAI] token ok, invoking edge function...');
 
-  // Делаем прямой fetch вместо sb.functions.invoke, потому что invoke внутри
-  // тоже трогает auth lock и может падать на той же ошибке параллельных запросов.
   const url = `${SUPABASE_URL}/functions/v1/${AI_PROXY_FUNCTION}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -149,9 +174,12 @@ async function callAI(task, input) {
   let data;
   try {
     data = await res.json();
-  } catch {
-    throw new Error(`Сервер вернул не-JSON ответ (статус ${res.status})`);
+  } catch (error) {
+    console.error('[callAI] non-json response', error);
+    throw new Error(`Сервер вернул не-JSON ответ. Статус: ${res.status}`);
   }
+
+  console.log('[callAI] response data:', JSON.stringify(data).slice(0, 500));
 
   if (!res.ok) throw new Error(data?.error || `Edge Function вернула ошибку ${res.status}`);
   if (data?.error) throw new Error(data.error);
@@ -159,6 +187,7 @@ async function callAI(task, input) {
   console.log('[callAI] success');
   return data;
 }
+
 
 function localLoad() {
   try {

@@ -4,403 +4,211 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Task =
-  | "career_analysis"
-  | "achievement_line"
-  | "task_map"
-  | "interview_questions";
+type Task = "career_analysis" | "achievement_line" | "task_map" | "interview_questions";
+
+const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
-  }
+  if (req.method === "OPTIONS") return json("ok", 200, true);
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    const apiKey = Deno.env.get("OPENAI_API_KEY");
-    const model = Deno.env.get("OPENAI_MODEL") || "gpt-5.5";
+    const apiKey = Deno.env.get("OPENROUTER_API_KEY");
+    if (!apiKey) return json({ error: "OPENROUTER_API_KEY not set" }, 500);
 
-    if (!apiKey) {
-      return json({ error: "OPENAI_API_KEY is not set in Supabase secrets" }, 500);
+    const body = await req.json().catch(() => null);
+    if (!body?.task || !body.input) return json({ error: "Need { task, input }" }, 400);
+
+    const task = body.task as Task;
+    const model = Deno.env.get("OPENROUTER_MODEL") || DEFAULT_MODEL;
+
+    if (task === "career_analysis") {
+      // Разбиваем на 2 запроса чтобы модель не обрезала JSON
+      const [part1, part2] = await Promise.all([
+        callModel(apiKey, model, buildAnalysisPrompt(body.input), 3000),
+        callModel(apiKey, model, buildTaskMapPrompt(body.input), 3000),
+      ]);
+      return json({
+        analysis: part1.analysis || {},
+        plan: Array.isArray(part1.plan) ? part1.plan : [],
+        taskMap: Array.isArray(part2.taskMap) ? part2.taskMap : [],
+        interviewQuestions: Array.isArray(part2.interviewQuestions) ? part2.interviewQuestions : [],
+      });
     }
 
-    const body = await req.json().catch(() => null) as {
-      task?: Task;
-      input?: unknown;
-      prompt?: string;
-    } | null;
-
-    if (!body) {
-      return json({ error: "Empty request body" }, 400);
+    if (task === "achievement_line") {
+      const result = await callModel(apiKey, model, buildAchievementPrompt(body.input), 500);
+      return json({ line: String(result.line || "").trim() });
     }
 
-    let prompt = "";
-
-    if (body.prompt) {
-      prompt = body.prompt;
-    } else if (body.task && body.input) {
-      prompt = buildPrompt(body.task, body.input);
-    } else {
-      return json({ error: "Expected { task, input } or { prompt }" }, 400);
+    if (task === "task_map") {
+      const result = await callModel(apiKey, model, buildTaskMapPrompt(body.input), 3000);
+      return json({ taskMap: Array.isArray(result.taskMap) ? result.taskMap : [] });
     }
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        input: prompt,
-        max_output_tokens: body.task === "career_analysis" ? 3500 : 1200,
-        text: {
-          format: {
-            type: "json_object",
-          },
-        },
-      }),
-    });
-
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      return json(
-        {
-          error: "OpenAI API error",
-          status: response.status,
-          details: payload,
-        },
-        response.status
-      );
+    if (task === "interview_questions") {
+      const result = await callModel(apiKey, model, buildInterviewPrompt(body.input), 2000);
+      return json({ interviewQuestions: Array.isArray(result.interviewQuestions) ? result.interviewQuestions : [] });
     }
 
-    const raw =
-  payload?.output_text ||
-  extractOpenAIText(payload) ||
-  "";
-
-    if (!raw) {
-      return json(
-        {
-          error: "OpenAI returned empty response",
-          details: payload,
-        },
-        500
-      );
-    }
-
-    const parsed = parseJson(raw);
-
-    if (body.task) {
-      return json(normalize(body.task, parsed), 200);
-    }
-
-    return json(parsed, 200);
+    return json({ error: `Unknown task: ${task}` }, 400);
   } catch (e) {
-    return json(
-      {
-        error: "Proxy error",
-        details: e instanceof Error ? e.message : String(e),
-      },
-      500
-    );
+    console.error("Edge function error:", e);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
 
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
+async function callModel(apiKey: string, model: string, prompt: string, maxTokens: number) {
+  console.log(`[ai-proxy] calling model=${model} maxTokens=${maxTokens} promptLen=${prompt.length}`);
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
     headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json; charset=utf-8",
+      "content-type": "application/json",
+      "authorization": `Bearer ${apiKey}`,
+      "http-referer": "https://careerpath-ecru.vercel.app",
+      "x-title": "CareerPath AI",
     },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  const payload = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const msg = payload?.error?.message || payload?.error || `OpenRouter ${res.status}`;
+    console.error("[ai-proxy] OpenRouter error:", msg);
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+
+  const raw = payload?.choices?.[0]?.message?.content || "";
+  console.log(`[ai-proxy] got response, length=${raw.length}`);
+
+  if (!raw) throw new Error("Empty response from model");
+  return robustJsonParse(raw);
+}
+
+function robustJsonParse(raw: string) {
+  // Очистка
+  let s = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const first = s.indexOf("{");
+  const last = s.lastIndexOf("}");
+  if (first === -1 || last === -1) throw new Error("No JSON object in response");
+  s = s.slice(first, last + 1);
+
+  // Попытка 1: как есть
+  try { return JSON.parse(s); } catch (_) { /* продолжаем */ }
+
+  // Попытка 2: чиним висячие запятые и кавычки
+  try {
+    const fixed = s
+      .replace(/,(\s*[\]}])/g, "$1")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'");
+    return JSON.parse(fixed);
+  } catch (_) { /* продолжаем */ }
+
+  // Попытка 3: дополняем незакрытые скобки
+  try {
+    let result = s;
+    const stack: string[] = [];
+    let inStr = false, esc = false;
+    for (let i = 0; i < result.length; i++) {
+      const c = result[i];
+      if (esc) { esc = false; continue; }
+      if (inStr) { if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') { inStr = true; continue; }
+      if (c === "{" || c === "[") stack.push(c);
+      else if (c === "}" || c === "]") { if (stack.length) stack.pop(); }
+    }
+    // Если в строке — обрубаем до последней кавычки
+    if (inStr) {
+      const lq = result.lastIndexOf('"');
+      if (lq > 0) result = result.slice(0, lq + 1);
+    }
+    // Удаляем висячую запятую перед закрытием
+    result = result.replace(/,\s*$/, "");
+    // Закрываем
+    while (stack.length) {
+      const open = stack.pop();
+      result += open === "{" ? "}" : "]";
+    }
+    return JSON.parse(result);
+  } catch (e) {
+    throw new Error(`Invalid JSON from model: ${(e as Error).message}`);
+  }
+}
+
+function json(data: unknown, status = 200, raw = false) {
+  const body = raw && typeof data === "string" ? data : JSON.stringify(data);
+  return new Response(body, {
+    status,
+    headers: { ...corsHeaders, "content-type": "application/json; charset=utf-8" },
   });
 }
 
-function extractOpenAIText(payload: any) {
-  if (!Array.isArray(payload?.output)) return "";
+// ===== ПРОМПТЫ =====
 
-  for (const item of payload.output) {
-    if (!Array.isArray(item?.content)) continue;
+const RULES = `Ты CareerPath AI — карьерный стратег. Язык: русский. Формат: ТОЛЬКО валидный JSON, без markdown. Не выдумывай факты. Все URL начинаются с https://. Массивы не пустые.`;
 
-    for (const content of item.content) {
-      if (typeof content?.text === "string" && content.text.trim()) {
-        return content.text;
-      }
-
-      if (typeof content?.value === "string" && content.value.trim()) {
-        return content.value;
-      }
-    }
-  }
-
-  return "";
+function safeInput(input: unknown) {
+  return JSON.stringify(input, null, 2).slice(0, 12000);
 }
 
-function parseJson(raw: string) {
-  const cleaned = raw
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
+function buildAnalysisPrompt(input: unknown) {
+  return `${RULES}
 
-  const first = cleaned.indexOf("{");
-  const last = cleaned.lastIndexOf("}");
+Данные: ${safeInput(input)}
 
-  if (first === -1 || last === -1) {
-    throw new Error("AI returned non-JSON response");
-  }
-
-  return JSON.parse(cleaned.slice(first, last + 1));
-}
-
-function buildPrompt(task: Task, input: unknown) {
-  const safeInput = JSON.stringify(input, null, 2).slice(0, 24000);
-
-  const baseRules = `
-Ты CareerPath AI: карьерный стратег, HR-партнёр и product/growth mentor.
-
-Пиши по-русски.
-Пиши конкретно, без воды.
-Выводи ТОЛЬКО валидный JSON.
-Не используй markdown.
-Не используй хардкод Иван/GRUZAPP, если пользователь сам их не указал.
-Не выдумывай реальные факты о кандидате.
-Если данных мало — формулируй как план развития.
-Все массивы должны быть заполнены.
-Все URL должны начинаться с https://
-`;
-
-  if (task === "career_analysis") {
-    return `${baseRules}
-
-Входные данные пользователя:
-${safeInput}
-
-Сформируй JSON строго такой структуры:
-
+Верни JSON:
 {
   "analysis": {
-    "summary": "2-3 предложения общего вывода",
-    "gaps": [
-      {
-        "skill": "название навыка",
-        "priority": "critical",
-        "current_level": 20,
-        "required_level": 80,
-        "description": "зачем нужен навык и что именно подтянуть",
-        "quick_win": "быстрое практическое действие",
-        "resources": [
-          {
-            "title": "название ресурса",
-            "url": "https://example.com",
-            "type": "курс",
-            "icon": "🎓"
-          }
-        ],
-        "steps": [
-          "практический шаг 1",
-          "практический шаг 2"
-        ]
-      }
-    ],
-    "strengths": [
-      "сильная сторона 1",
-      "сильная сторона 2"
-    ],
-    "action_plan": "конкретный 90-дневный план"
+    "summary": "2-3 предложения",
+    "gaps": [{"skill":"...","priority":"critical|important|nice","current_level":20,"required_level":80,"description":"...","quick_win":"...","resources":[{"title":"...","url":"https://...","type":"курс","icon":"🎓"}],"steps":["шаг 1","шаг 2"]}],
+    "strengths": ["сильная сторона 1","сторона 2"],
+    "action_plan": "90-дневный план"
   },
-  "plan": [
-    {
-      "skill": "название навыка",
-      "priority": "critical",
-      "desc": "описание",
-      "quick_win": "быстрое действие",
-      "resources": [
-        {
-          "title": "название ресурса",
-          "url": "https://example.com",
-          "type": "курс",
-          "icon": "🎓"
-        }
-      ],
-      "steps": [
-        "шаг 1",
-        "шаг 2"
-      ]
-    }
-  ],
-  "taskMap": [
-    {
-      "id": "block_1",
-      "title": "Блок 1: название блока",
-      "tasks": [
-        {
-          "id": "task_1_1",
-          "title": "название задачи",
-          "goal": "цель задачи",
-          "tags": ["AI", "practice"],
-          "steps": [
-            "шаг 1",
-            "шаг 2"
-          ],
-          "tools": [
-            {
-              "name": "название инструмента",
-              "url": "https://example.com",
-              "description": "зачем нужен",
-              "type": "tool",
-              "icon": "🔧"
-            }
-          ],
-          "metrics": [
-            "результат",
-            "артефакт"
-          ]
-        }
-      ]
-    }
-  ],
-  "interviewQuestions": [
-    {
-      "id": "q_1",
-      "skill": "навык",
-      "q": "вопрос",
-      "tips": [
-        "подсказка 1",
-        "подсказка 2"
-      ]
-    }
-  ]
+  "plan": [{"skill":"...","priority":"critical","desc":"...","quick_win":"...","resources":[],"steps":[]}]
 }
 
-Требования:
-- 5-7 gaps.
-- 5-7 пунктов plan.
-- 3-4 блока taskMap.
-- всего 6-10 задач в taskMap.
-- 6-8 вопросов interviewQuestions.
-- priority только: critical, important или nice.
-- current_level и required_level только числа от 0 до 100.
-`;
-  }
+Нужно: 4-5 gaps, 4-5 пунктов plan. Коротко и конкретно.`;
+}
 
-  if (task === "task_map") {
-    return `${baseRules}
+function buildTaskMapPrompt(input: unknown) {
+  return `${RULES}
 
-Входные данные:
-${safeInput}
+Данные: ${safeInput(input)}
 
-Сгенерируй JSON:
-
+Верни JSON:
 {
-  "taskMap": [
-    {
-      "id": "block_1",
-      "title": "Блок 1: название блока",
-      "tasks": [
-        {
-          "id": "task_1_1",
-          "title": "название задачи",
-          "goal": "цель",
-          "tags": ["practice"],
-          "steps": ["шаг 1", "шаг 2"],
-          "tools": [
-            {
-              "name": "инструмент",
-              "url": "https://example.com",
-              "description": "описание",
-              "type": "tool",
-              "icon": "🔧"
-            }
-          ],
-          "metrics": ["метрика 1", "метрика 2"]
-        }
-      ]
-    }
-  ]
+  "taskMap": [{"id":"block_1","title":"Блок 1: название","tasks":[{"id":"task_1_1","title":"задача","goal":"цель","tags":["practice"],"steps":["шаг"],"tools":[{"name":"инструмент","url":"https://...","description":"зачем","type":"tool","icon":"🔧"}],"metrics":["метрика"]}]}],
+  "interviewQuestions": [{"id":"q_1","skill":"навык","q":"вопрос","tips":["подсказка"]}]
 }
 
-Нужно 3-5 блоков и 8-12 задач.
-`;
-  }
-
-  if (task === "interview_questions") {
-    return `${baseRules}
-
-Входные данные:
-${safeInput}
-
-Сгенерируй JSON:
-
-{
-  "interviewQuestions": [
-    {
-      "id": "q_1",
-      "skill": "навык",
-      "q": "вопрос",
-      "tips": ["подсказка 1", "подсказка 2"]
-    }
-  ]
+Нужно: 3 блока taskMap с 2-3 задачами каждый, 5 вопросов interviewQuestions. Коротко.`;
 }
 
-Нужно 8 вопросов: поведенческие, кейсовые, по метрикам, по стратегии и по слабым местам кандидата.
-`;
-  }
+function buildInterviewPrompt(input: unknown) {
+  return `${RULES}
 
-  return `${baseRules}
+Данные: ${safeInput(input)}
 
-Входные данные:
-${safeInput}
+Верни JSON:
+{"interviewQuestions":[{"id":"q_1","skill":"навык","q":"вопрос","tips":["подсказка 1"]}]}
 
-Сформулируй одну сильную строку достижения для резюме.
-
-JSON:
-
-{
-  "line": "строка достижения"
+Нужно 6 вопросов. Коротко.`;
 }
 
-Строка должна быть деловой, с действием, метрикой и периодом.
-Без вранья.
-`;
-}
+function buildAchievementPrompt(input: unknown) {
+  return `${RULES}
 
-function normalize(task: Task, parsed: Record<string, unknown>) {
-  if (task === "achievement_line") {
-    return {
-      line: String(parsed.line || "").trim(),
-    };
-  }
+Данные: ${safeInput(input)}
 
-  if (task === "task_map") {
-    return {
-      taskMap: Array.isArray(parsed.taskMap) ? parsed.taskMap : [],
-    };
-  }
-
-  if (task === "interview_questions") {
-    return {
-      interviewQuestions: Array.isArray(parsed.interviewQuestions)
-        ? parsed.interviewQuestions
-        : [],
-    };
-  }
-
-  const analysis =
-    parsed.analysis && typeof parsed.analysis === "object"
-      ? parsed.analysis
-      : {};
-
-  return {
-    analysis,
-    plan: Array.isArray(parsed.plan) ? parsed.plan : [],
-    taskMap: Array.isArray(parsed.taskMap) ? parsed.taskMap : [],
-    interviewQuestions: Array.isArray(parsed.interviewQuestions)
-      ? parsed.interviewQuestions
-      : [],
-  };
+Верни JSON:
+{"line":"сильная строка достижения для резюме с метрикой и периодом"}`;
 }
