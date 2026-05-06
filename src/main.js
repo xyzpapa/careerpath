@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import './styles.css';
+import { detectDomain, buildKnowledgeContext } from './knowledge-base.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://proydwxsyvlvzyujzgbo.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb3lkd3hzeXZsdnp5dWp6Z2JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxNDUsImV4cCI6MjA5MTE1MjE0NX0.pxRuBIyK2CpVVAzT60eCQ_fKxjZepGpX8rd01eE3mc4';
@@ -150,11 +151,17 @@ async function callAI(task, input) {
     }
   }
 
-  // Если всё равно нет токена — используем anon key (для публичных функций)
+  // Если всё равно нет токена — используем anon key
   if (!token) {
     console.warn('[callAI] no session token, using anon key');
     token = SUPABASE_ANON_KEY;
   }
+
+  // Подбираем базу знаний по сфере юзера
+  const searchText = `${S.profile.targetRole} ${S.profile.currentRole} ${S.profile.market || ''}`;
+  const domainKeys = detectDomain(searchText);
+  const knowledgeContext = buildKnowledgeContext(domainKeys);
+  console.log('[callAI] detected domains:', domainKeys, 'knowledge length:', knowledgeContext.length);
 
   console.log('[callAI] token ok, invoking edge function...');
 
@@ -166,7 +173,7 @@ async function callAI(task, input) {
       'Authorization': `Bearer ${token}`,
       'apikey': SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ task, input }),
+    body: JSON.stringify({ task, input, knowledge_context: knowledgeContext }),
   });
 
   console.log('[callAI] response status', res.status);
