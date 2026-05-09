@@ -326,7 +326,7 @@ function renderShell() {
     <div class="auth-screen" id="auth-screen">
       <div class="auth-box">
         <div class="auth-logo">CareerPath AI</div>
-        <div class="auth-tagline">Карьерный трекер с AI-анализом гэпов</div>
+        <div class="auth-tagline">AI-платформа для профессионального роста</div>
         <div class="auth-tabs">
           <div class="auth-tab active" data-auth-tab="login">Войти</div>
           <div class="auth-tab" data-auth-tab="register">Регистрация</div>
@@ -352,11 +352,11 @@ function renderShell() {
     <div class="onboarding-screen" id="onboarding-screen">
       <div class="onboarding-box">
         <div class="card-title">Настрой профиль</div>
-        <div class="card-sub">Эти данные заменяют хардкод и используются в анализе, карте заданий, интервью и резюме.</div>
+        <div class="card-sub">Эти данные используются в анализе, карте заданий, подготовке и документах. Подходит и для поиска работы, и для роста на текущей позиции.</div>
         <div class="onboarding-grid">
           ${field('profile-name','Имя','Иван / Мария / Алексей')}
           ${field('profile-current-role','Текущая роль','Маркетолог, дизайнер, продакт, студент')}
-          ${field('profile-target-role','Целевая роль','Product Marketing Manager / AI Automation Specialist')}
+          ${field('profile-target-role','Целевая роль / задача','Product Manager / Усилить growth-навыки / AI Automation Specialist')}
           ${field('profile-project','Проект / компания','Название проекта или «личный бренд»')}
           ${field('profile-market','Рынок / ниша','B2B SaaS, логистика, e-commerce, медиа')}
           <div class="field-group full"><div class="field-label">Коротко об опыте</div><textarea class="answer-area" id="profile-experience" placeholder="3–5 строк: чем занимался, какие инструменты знаешь, какие результаты были"></textarea></div>
@@ -370,19 +370,19 @@ function renderShell() {
 
     <div class="app" id="main-app" style="display:none">
       <nav class="sidebar">
-        <div class="sb-brand"><div class="sb-logo">CareerPath AI</div><div class="sb-tagline">Персональный карьерный путь</div></div>
+        <div class="sb-brand"><div class="sb-logo">CareerPath AI</div><div class="sb-tagline">Развитие навыков и карьеры</div></div>
         <div class="sb-xp"><div class="xp-label"><span>XP: <span id="xp-cur">0</span></span><span>до ур. <span id="xp-next-level">2</span>: <span id="xp-to-next">100</span> XP</span></div><div class="xp-bar"><div class="xp-fill" id="xp-bar"></div></div><div class="xp-level" id="xp-level-label">Уровень 1 — Starter</div></div>
         <div class="sb-nav">
           <div class="sb-section">Главное</div>
           ${navItem('home','🏠','Дашборд', true)}
-          ${navItem('analyzer','🤖','AI Анализ гэпов')}
+          ${navItem('analyzer','🤖','AI Анализ навыков')}
           <div class="sb-section">Развитие</div>
           ${navItem('plan','📋','Мой план')}
           ${navItem('taskmap','🗺️','Карта заданий')}
           ${navItem('achievements','🏆','Достижения')}
-          ${navItem('interview','🎯','Подготовка к интервью')}
+          ${navItem('interview','🎯','Подготовка')}
           <div class="sb-section">Профиль</div>
-          ${navItem('resume','📄','Резюме-конструктор')}
+          ${navItem('resume','📄','Документы')}
         </div>
         <div class="sb-badges"><div class="badges-label">Бейджи</div><div class="badges-grid" id="badges-grid"></div></div>
         <div class="user-bar"><div class="user-avatar" id="user-avatar">?</div><div class="user-email" id="user-email">загрузка...</div><span class="sync-status sync-ok" id="sync-status">☁️ синк</span><button class="user-logout" data-action="logout" title="Выйти">⏻</button></div>
@@ -426,7 +426,7 @@ function renderHome() {
     </div>
     <div class="card">
       <div class="card-title">👋 Привет, ${esc(displayName())}</div>
-      <div class="card-sub">Цель: <strong style="color:var(--green)">${esc(S.profile.targetRole || 'задать целевую роль')}</strong>. Проект: ${esc(projectName())}. Начни с AI-анализа: вставь резюме и вакансию, а система соберёт гэпы, план, карту заданий и вопросы для интервью.</div>
+      <div class="card-sub">Цель: <strong style="color:var(--green)">${esc(S.profile.targetRole || 'задать целевую роль')}</strong>. Проект: ${esc(projectName())}. Начни с AI-анализа: опиши свои навыки и задачу (целевая роль, проект или вакансия), а система соберёт гэпы, план, карту заданий и подготовку.</div>
       <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-green" data-nav="analyzer">🤖 Начать анализ</button><button class="btn btn-ghost" data-action="open-profile">Изменить профиль</button></div>
     </div>
     ${hasProfile() ? `<div class="card"><div class="card-title">Профиль</div><div class="card-sub">
@@ -442,12 +442,12 @@ function renderAnalyzer() {
   const el = document.getElementById('view-analyzer');
   if (!el) return;
   el.innerHTML = `
-    <div class="card"><div class="card-title">🤖 AI Анализ навыковых гэпов</div><div class="card-sub">Резюме опционально, вакансия обязательна. После анализа AI обновит план, карту заданий и интервью под твою роль.</div></div>
+    <div class="card"><div class="card-title">🤖 AI Анализ навыков</div><div class="card-sub">Опиши свои навыки и задачу: целевую роль, проект или вакансию. AI найдёт гэпы, составит план, карту заданий и подготовку.</div></div>
     <div class="analyzer-grid">
-      <div class="input-block"><div class="input-label"><span>📄</span> Твоё резюме / навыки</div><textarea id="resume-input" placeholder="Например: ${esc(S.profile.experienceSummary || '2 года в маркетинге, Яндекс Директ, контент, аналитика, AI-инструменты')}"></textarea></div>
-      <div class="input-block"><div class="input-label"><span>🎯</span> Целевая вакансия</div><textarea id="job-input" placeholder="Вставь описание вакансии или опиши целевую роль: ${esc(S.profile.targetRole || 'Product Marketing Manager')}"></textarea></div>
+      <div class="input-block"><div class="input-label"><span>📄</span> Твои навыки и опыт</div><textarea id="resume-input" placeholder="Например: ${esc(S.profile.experienceSummary || '2 года в маркетинге, Яндекс Директ, контент, аналитика, AI-инструменты')}"></textarea></div>
+      <div class="input-block"><div class="input-label"><span>🎯</span> Цель: роль, проект или вакансия</div><textarea id="job-input" placeholder="Опиши что хочешь: целевую роль, проект который строишь, или вставь описание вакансии. Например: ${esc(S.profile.targetRole || 'Хочу усилить навыки в growth-маркетинге для текущего проекта')}"></textarea></div>
     </div>
-    <button class="analyze-btn" id="analyze-btn" data-action="run-analysis">🤖 Анализировать и собрать путь</button>
+    <button class="analyze-btn" id="analyze-btn" data-action="run-analysis">🤖 Анализировать</button>
     <div class="loading" id="analysis-loading"><div class="spinner"></div><div class="loading-text">AI анализирует профиль...</div><div class="loading-steps" id="loading-step">Сопоставляю навыки с требованиями</div></div>
     <div class="results-container ${S.gapResults ? 'show' : ''}" id="analysis-results">
       <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 16px"><div style="font-family:var(--display);font-size:13px;font-weight:700">Анализ гэпов</div><button class="btn btn-ghost" data-action="add-all-to-plan">+ Добавить всё в план</button></div>
@@ -691,11 +691,66 @@ async function reviewAnswer(answerId, questionIndex) {
 function renderResume() {
   const el = document.getElementById('view-resume');
   if (!el) return;
-  const role = S.profile.currentRole || 'Опыт';
+  const role = S.profile.currentRole || 'Специалист';
+  const target = S.profile.targetRole || 'целевая роль';
   const project = projectName();
-  const achievements = S.achievements.length ? S.achievements.map(a => `• ${a.line}`).join('\n') : 'Добавь достижения, чтобы здесь появились сильные bullet points.';
-  const skills = [...new Set(S.plan.filter(p => p.done).map(p => p.skill).concat(S.plan.map(p => p.skill).slice(0, 8)))].join(', ') || 'Навыки появятся после анализа и выполнения задач.';
-  el.innerHTML = `<div style="margin-bottom:20px"><div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px">Резюме-конструктор</div><div style="font-size:12px;color:var(--mid)">Автоматически собирается из профиля, достижений и закрытых навыков</div></div><div class="card"><div class="card-title">Блок «Опыт» — ${esc(project)}</div><pre id="resume-experience" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;white-space:pre-wrap">${esc(`${role} · ${project}\n${achievements}`)}</pre><button class="btn btn-ghost" data-copy-id="resume-experience" style="font-size:10px">📋 Копировать</button></div><div class="card"><div class="card-title">Навыки</div><pre id="resume-skills" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;white-space:pre-wrap">${esc(skills)}</pre><button class="btn btn-ghost" data-copy-id="resume-skills" style="font-size:10px">📋 Копировать</button></div>`;
+  const achievements = S.achievements.length ? S.achievements.map(a => `• ${a.line}`).join('\n') : '';
+  const skills = [...new Set(S.plan.filter(p => p.done).map(p => p.skill).concat(S.plan.map(p => p.skill).slice(0, 8)))].join(', ') || '';
+  const doneTasks = [];
+  for (const block of (S.taskMap || [])) {
+    for (const task of (block.tasks || [])) {
+      if (S.tmDone[task.id]) doneTasks.push(task);
+    }
+  }
+  const taskLines = doneTasks.map(t => {
+    const note = S.tmNotes[t.id] || '';
+    const metrics = S.tmMetrics[t.id] || {};
+    const metricStr = Object.entries(metrics).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(', ');
+    return `• ${t.title}${metricStr ? ` (${metricStr})` : ''}${note ? ` — ${note.slice(0,80)}` : ''}`;
+  }).join('\n');
+
+  // Резюме
+  const resumeText = `${role} → ${target}\n${project}\n\n${achievements || 'Добавь достижения в разделе «Достижения»'}`;
+  const resumeSkills = skills || 'Навыки появятся после анализа и выполнения задач';
+
+  // Отчёт о проекте
+  const reportText = `Проект: ${project}\nРоль: ${role}\nПериод: ${new Date().toLocaleDateString('ru-RU')}\n\nВыполненные задачи (${doneTasks.length}):\n${taskLines || 'Выполняй задания в «Карте заданий» — они появятся здесь'}\n\nРезультаты:\n${achievements || 'Добавь достижения — они сформируют раздел результатов'}`;
+
+  // Кейс для портфолио
+  const caseText = `Кейс: ${target} · ${project}\n\nИсходная ситуация:\n${role}, навыки: ${skills || '(заполнится после анализа)'}\n\nЗадача:\nДостичь уровня ${target}\n\nЧто сделал:\n${taskLines || '(выполняй задания — они появятся здесь)'}\n\nРезультат:\n${achievements || '(добавь достижения с метриками)'}`;
+
+  el.innerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px">Документы</div>
+      <div style="font-size:12px;color:var(--mid)">Собираются автоматически из профиля, выполненных задач и достижений. Выбери формат.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📄 Резюме</div>
+      <div class="card-sub" style="margin-bottom:12px">Опыт и навыки для вакансии или LinkedIn</div>
+      <div style="font-family:var(--display);font-size:11px;font-weight:700;margin-bottom:6px;color:var(--mid)">Опыт</div>
+      <pre id="doc-resume" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;white-space:pre-wrap">${esc(resumeText)}</pre>
+      <div style="font-family:var(--display);font-size:11px;font-weight:700;margin:12px 0 6px;color:var(--mid)">Навыки</div>
+      <pre id="doc-resume-skills" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;white-space:pre-wrap">${esc(resumeSkills)}</pre>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost" data-copy-id="doc-resume" style="font-size:10px">📋 Копировать опыт</button>
+        <button class="btn btn-ghost" data-copy-id="doc-resume-skills" style="font-size:10px">📋 Копировать навыки</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 Отчёт о проекте</div>
+      <div class="card-sub" style="margin-bottom:12px">Для руководителя, клиента или отчёта о проделанной работе</div>
+      <pre id="doc-report" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;white-space:pre-wrap">${esc(reportText)}</pre>
+      <button class="btn btn-ghost" data-copy-id="doc-report" style="font-size:10px">📋 Копировать</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💼 Кейс для портфолио</div>
+      <div class="card-sub" style="margin-bottom:12px">Структурированный кейс: ситуация → задача → действия → результат</div>
+      <pre id="doc-case" style="font-size:12px;color:var(--mid);font-family:'Courier New',monospace;line-height:1.9;white-space:pre-wrap">${esc(caseText)}</pre>
+      <button class="btn btn-ghost" data-copy-id="doc-case" style="font-size:10px">📋 Копировать</button>
+    </div>`;
 }
 
 function openProfile() {
@@ -786,7 +841,7 @@ function navigate(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${id}`)?.classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i => i.classList.toggle('active', i.dataset.nav === id));
-  const titles = { home:'Дашборд', analyzer:'AI Анализ гэпов', plan:'Мой план', taskmap:'Карта заданий', achievements:'Достижения', interview:'Подготовка к интервью', resume:'Резюме-конструктор' };
+  const titles = { home:'Дашборд', analyzer:'AI Анализ навыков', plan:'Мой план', taskmap:'Карта заданий', achievements:'Достижения', interview:'Подготовка', resume:'Документы' };
   setText('tb-title', titles[id] || id);
 }
 
