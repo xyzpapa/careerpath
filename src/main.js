@@ -634,7 +634,7 @@ function renderInterview() {
 
 function interviewHtml() {
   if (!S.interviewQuestions.length) return `<div class="empty"><div class="empty-icon">🎯</div>Вопросы появятся после AI-анализа.</div>`;
-  return S.interviewQuestions.map((q, i) => `<div class="interview-card"><div class="q-num">Вопрос ${i+1} · ${esc(q.skill || S.profile.targetRole || 'роль')}</div><div class="q-text">${esc(q.q || q.question)}</div><div class="q-tips"><div class="q-tips-label">Что раскрыть</div><ul>${(q.tips || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div><textarea class="answer-area" data-answer-id="${esc(q.id || `q_${i}`)}" placeholder="Напиши ответ по STAR / Situation–Task–Action–Result">${esc(S.answers[q.id || `q_${i}`] || '')}</textarea><div class="answer-footer"><button class="save-answer-btn" data-action="save-answer" data-answer-id="${esc(q.id || `q_${i}`)}">Сохранить ответ</button></div></div>`).join('');
+  return S.interviewQuestions.map((q, i) => `<div class="interview-card"><div class="q-num">Вопрос ${i+1} · ${esc(q.skill || S.profile.targetRole || 'роль')}</div><div class="q-text">${esc(q.q || q.question)}</div><div class="q-tips"><div class="q-tips-label">Что раскрыть</div><ul>${(q.tips || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div><textarea class="answer-area" data-answer-id="${esc(q.id || `q_${i}`)}" placeholder="Напиши ответ по STAR / Situation–Task–Action–Result">${esc(S.answers[q.id || `q_${i}`] || '')}</textarea><div class="answer-footer"><button class="save-answer-btn" data-action="save-answer" data-answer-id="${esc(q.id || `q_${i}`)}">Сохранить ответ</button><button class="save-answer-btn" style="background:var(--purple);margin-left:6px" data-action="review-answer" data-answer-id="${esc(q.id || `q_${i}`)}" data-question-index="${i}">🤖 AI Ревью</button></div><div class="review-container" id="review-${esc(q.id || `q_${i}`)}" style="margin-top:8px;font-size:12px;line-height:1.6"></div></div>`).join('');
 }
 
 async function generateInterview() {
@@ -643,6 +643,49 @@ async function generateInterview() {
     S.interviewQuestions = data.interviewQuestions || [];
     save(); renderInterview(); addXP(30, 'интервью обновлено');
   } catch (e) { showNotif(`⚠️ ${e.message}`); }
+}
+
+async function reviewAnswer(answerId, questionIndex) {
+  const answer = S.answers[answerId];
+  if (!answer || !answer.trim()) return showNotif('Сначала напиши и сохрани ответ');
+
+  const question = S.interviewQuestions[Number(questionIndex)];
+  if (!question) return showNotif('Вопрос не найден');
+
+  const reviewEl = document.getElementById(`review-${answerId}`);
+  if (reviewEl) {
+    reviewEl.classList.add('show');
+    reviewEl.innerHTML = '<div class="spinner" style="margin:12px auto"></div><div style="text-align:center;font-size:11px;color:var(--mid)">AI анализирует ответ...</div>';
+  }
+
+  try {
+    const data = await callAI('review_answer', {
+      profile: S.profile,
+      question: question.q,
+      skill: question.skill,
+      answer: answer,
+      tips: question.tips,
+    });
+
+    const r = data.review || {};
+    const scoreColors = { weak: '#ef4444', ok: '#f59e0b', good: '#22c55e', strong: '#10b981' };
+    const color = scoreColors[r.score] || 'var(--mid)';
+    const scoreEmoji = { weak: '⚠️', ok: '🤔', good: '👍', strong: '🔥' };
+
+    if (reviewEl) {
+      reviewEl.innerHTML = `
+        <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:8px">${esc(r.score_label || r.score)} ${scoreEmoji[r.score] || ''}</div>
+        <div style="font-size:11px;margin-bottom:6px"><b>Структура:</b> ${esc(r.structure || '')}</div>
+        <div style="font-size:11px;margin-bottom:6px"><b>Конкретика:</b> ${esc(r.specifics || '')}</div>
+        <div style="font-size:11px;margin-bottom:6px"><b>Релевантность:</b> ${esc(r.relevance || '')}</div>
+        <div style="font-size:11px;margin-bottom:8px"><b>Как усилить:</b><ul style="margin:4px 0;padding-left:16px">${(r.tips || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>
+        <div style="font-size:11px;padding:8px;background:var(--card-bg);border-radius:6px;border:1px solid var(--border)"><b>Пример сильного ответа:</b><br>${esc(r.example_answer || '')}</div>
+      `;
+    }
+    addXP(15, 'ответ проанализирован');
+  } catch (e) {
+    if (reviewEl) reviewEl.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
+  }
 }
 
 function renderResume() {
