@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import './styles.css';
-import { detectDomain, buildKnowledgeContext } from './knowledge-base.js';
+import { detectDomain, buildKnowledgeContext } from './knowledgeBase.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://proydwxsyvlvzyujzgbo.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb3lkd3hzeXZsdnp5dWp6Z2JvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxNDUsImV4cCI6MjA5MTE1MjE0NX0.pxRuBIyK2CpVVAzT60eCQ_fKxjZepGpX8rd01eE3mc4';
