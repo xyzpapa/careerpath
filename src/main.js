@@ -441,12 +441,10 @@ function renderHome() {
 function renderAnalyzer() {
   const el = document.getElementById('view-analyzer');
   if (!el) return;
+  const hasExp = S.profile.experienceSummary?.trim();
   el.innerHTML = `
-    <div class="card"><div class="card-title">🤖 AI Анализ навыков</div><div class="card-sub">Опиши свои навыки и задачу: целевую роль, проект или вакансию. AI найдёт гэпы, составит план, карту заданий и подготовку.</div></div>
-    <div class="analyzer-grid">
-      <div class="input-block"><div class="input-label"><span>📄</span> Твои навыки и опыт</div><textarea id="resume-input" placeholder="Например: ${esc(S.profile.experienceSummary || '2 года в маркетинге, Яндекс Директ, контент, аналитика, AI-инструменты')}"></textarea></div>
-      <div class="input-block"><div class="input-label"><span>🎯</span> Цель: роль, проект или вакансия</div><textarea id="job-input" placeholder="Опиши что хочешь: целевую роль, проект который строишь, или вставь описание вакансии. Например: ${esc(S.profile.targetRole || 'Хочу усилить навыки в growth-маркетинге для текущего проекта')}"></textarea></div>
-    </div>
+    <div class="card"><div class="card-title">🤖 AI Анализ навыков</div><div class="card-sub">Опиши свою цель — AI возьмёт опыт из профиля, найдёт гэпы, составит план и карту заданий.${!hasExp ? ' <strong style="color:var(--orange)">Совет:</strong> заполни опыт в профиле — анализ будет точнее.' : ''}</div></div>
+    <div class="input-block" style="margin-bottom:16px"><div class="input-label"><span>🎯</span> Цель: роль, проект или вакансия</div><textarea id="job-input" placeholder="Опиши что хочешь: целевую роль, проект который строишь, или вставь описание вакансии. Например: ${esc(S.profile.targetRole || 'Хочу усилить навыки в growth-маркетинге для текущего проекта')}" style="min-height:120px"></textarea></div>
     <button class="analyze-btn" id="analyze-btn" data-action="run-analysis">🤖 Анализировать</button>
     <div class="loading" id="analysis-loading"><div class="spinner"></div><div class="loading-text">AI анализирует профиль...</div><div class="loading-steps" id="loading-step">Сопоставляю навыки с требованиями</div></div>
     <div class="results-container ${S.gapResults ? 'show' : ''}" id="analysis-results">
@@ -457,9 +455,9 @@ function renderAnalyzer() {
 }
 
 async function runAnalysis() {
-  const resume = document.getElementById('resume-input')?.value.trim() || S.profile.experienceSummary || '';
+  const resume = S.profile.experienceSummary || '';
   const job = document.getElementById('job-input')?.value.trim() || S.profile.targetRole || '';
-  if (!job.trim()) return showNotif('⚠️ Заполни описание вакансии или целевую роль');
+  if (!job.trim()) return showNotif('⚠️ Опиши цель: роль, проект или вакансию');
   const btn = document.getElementById('analyze-btn');
   const loading = document.getElementById('analysis-loading');
   const results = document.getElementById('analysis-results');
